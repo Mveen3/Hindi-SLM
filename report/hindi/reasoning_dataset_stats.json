@@ -5,9 +5,9 @@
   "seed": 1337,
   "numeral_script": "ascii",
   "split_sizes_requested": {
-    "train": 40000,
-    "val": 2500,
-    "test": 2500
+    "train": 10,
+    "val": 5,
+    "test": 5
   },
   "direct_answer_fraction": 0.0,
   "max_sequence_tokens": 448,
@@ -254,193 +254,145 @@
   },
   "splits": {
     "train": {
-      "examples": 40000,
-      "unique_prompts": 40000,
-      "unique_answers": 5694,
+      "examples": 10,
+      "unique_prompts": 10,
+      "unique_answers": 7,
       "by_task": {
-        "chain_largest": 2619,
-        "chain_relation": 3219,
-        "chain_smallest": 2753,
-        "compare_equal": 2144,
-        "compare_two_less": 2664,
-        "compare_two_more": 2699,
-        "middle_entity": 2198,
-        "mixed_direction_chain": 3251,
-        "numeric_difference": 2222,
-        "order_ascending": 2447,
-        "order_descending": 2425,
-        "transitive_largest": 2912,
-        "transitive_relation": 3409,
-        "transitive_smallest": 2909,
-        "verify_claim": 2129
+        "compare_equal": 3,
+        "compare_two_more": 2,
+        "mixed_direction_chain": 1,
+        "numeric_difference": 2,
+        "verify_claim": 2
       },
       "by_fact_kind": {
-        "relation": 21072,
-        "value": 18928
+        "relation": 1,
+        "value": 9
       },
       "by_hops": {
-        "1": 11858,
-        "2": 16300,
-        "3": 11842
+        "1": 9,
+        "3": 1
       },
       "by_attribute": {
-        "age": 4517,
-        "distance": 4531,
-        "height": 4440,
-        "population": 4422,
-        "price": 4358,
-        "quantity": 4472,
-        "speed": 4389,
-        "temperature": 4336,
-        "weight": 4535
+        "population": 2,
+        "price": 2,
+        "quantity": 1,
+        "speed": 1,
+        "temperature": 1,
+        "weight": 3
       },
       "by_style": {
-        "cot": 40000
+        "cot": 10
       },
       "by_n_entities": {
-        "2": 11858,
-        "3": 14936,
-        "4": 7756,
-        "5": 5450
+        "2": 9,
+        "3": 1
       },
-      "mean_prompt_chars": 202.9,
-      "mean_reasoning_chars": 288.3
+      "mean_prompt_chars": 152.8,
+      "mean_reasoning_chars": 179.5
     },
     "val": {
-      "examples": 2500,
-      "unique_prompts": 2500,
-      "unique_answers": 460,
+      "examples": 5,
+      "unique_prompts": 5,
+      "unique_answers": 4,
       "by_task": {
-        "chain_largest": 172,
-        "chain_relation": 199,
-        "chain_smallest": 167,
-        "compare_equal": 134,
-        "compare_two_less": 172,
-        "compare_two_more": 169,
-        "middle_entity": 136,
-        "mixed_direction_chain": 208,
-        "numeric_difference": 139,
-        "order_ascending": 150,
-        "order_descending": 162,
-        "transitive_largest": 158,
-        "transitive_relation": 201,
-        "transitive_smallest": 187,
-        "verify_claim": 146
+        "chain_relation": 1,
+        "compare_equal": 1,
+        "middle_entity": 1,
+        "numeric_difference": 1,
+        "transitive_relation": 1
       },
       "by_fact_kind": {
-        "relation": 1292,
-        "value": 1208
+        "relation": 2,
+        "value": 3
       },
       "by_hops": {
-        "1": 760,
-        "2": 994,
-        "3": 746
+        "1": 2,
+        "2": 2,
+        "3": 1
       },
       "by_attribute": {
-        "age": 285,
-        "distance": 286,
-        "height": 291,
-        "population": 260,
-        "price": 291,
-        "quantity": 268,
-        "speed": 258,
-        "temperature": 286,
-        "weight": 275
+        "age": 2,
+        "distance": 2,
+        "weight": 1
       },
       "by_style": {
-        "cot": 2500
+        "cot": 5
       },
       "by_n_entities": {
-        "2": 760,
-        "3": 910,
-        "4": 466,
-        "5": 364
+        "2": 2,
+        "3": 2,
+        "4": 1
       },
-      "mean_prompt_chars": 208.2,
-      "mean_reasoning_chars": 287.1
+      "mean_prompt_chars": 181.8,
+      "mean_reasoning_chars": 189.2
     },
     "test": {
-      "examples": 2500,
-      "unique_prompts": 2500,
-      "unique_answers": 496,
+      "examples": 5,
+      "unique_prompts": 5,
+      "unique_answers": 5,
       "by_task": {
-        "chain_largest": 169,
-        "chain_relation": 206,
-        "chain_smallest": 159,
-        "compare_equal": 123,
-        "compare_two_less": 178,
-        "compare_two_more": 183,
-        "middle_entity": 135,
-        "mixed_direction_chain": 205,
-        "numeric_difference": 142,
-        "order_ascending": 167,
-        "order_descending": 141,
-        "transitive_largest": 184,
-        "transitive_relation": 216,
-        "transitive_smallest": 153,
-        "verify_claim": 139
+        "chain_largest": 1,
+        "chain_smallest": 1,
+        "compare_two_less": 1,
+        "compare_two_more": 1,
+        "middle_entity": 1
       },
       "by_fact_kind": {
-        "relation": 1292,
-        "value": 1208
+        "relation": 2,
+        "value": 3
       },
       "by_hops": {
-        "1": 765,
-        "2": 996,
-        "3": 739
+        "1": 2,
+        "2": 1,
+        "3": 2
       },
       "by_attribute": {
-        "age": 277,
-        "distance": 286,
-        "height": 263,
-        "population": 280,
-        "price": 274,
-        "quantity": 305,
-        "speed": 284,
-        "temperature": 274,
-        "weight": 257
+        "distance": 2,
+        "population": 1,
+        "price": 1,
+        "temperature": 1
       },
       "by_style": {
-        "cot": 2500
+        "cot": 5
       },
       "by_n_entities": {
-        "2": 765,
-        "3": 914,
-        "4": 499,
-        "5": 322
+        "2": 2,
+        "3": 1,
+        "4": 1,
+        "5": 1
       },
-      "mean_prompt_chars": 187.1,
-      "mean_reasoning_chars": 284.0
+      "mean_prompt_chars": 186.8,
+      "mean_reasoning_chars": 324.8
     }
   },
   "token_stats": {
     "train": {
       "available": true,
-      "sampled": 2000,
-      "mean_tokens": 140.0,
-      "median_tokens": 126,
-      "p95_tokens": 262,
-      "max_tokens": 343,
+      "sampled": 10,
+      "mean_tokens": 94.2,
+      "median_tokens": 87,
+      "p95_tokens": 111,
+      "max_tokens": 161,
       "examples_with_unk": 0,
       "unk_tokens": 0
     },
     "val": {
       "available": true,
-      "sampled": 2000,
-      "mean_tokens": 137.8,
-      "median_tokens": 122,
-      "p95_tokens": 268,
-      "max_tokens": 363,
+      "sampled": 5,
+      "mean_tokens": 95.6,
+      "median_tokens": 98,
+      "p95_tokens": 110,
+      "max_tokens": 126,
       "examples_with_unk": 0,
       "unk_tokens": 0
     },
     "test": {
       "available": true,
-      "sampled": 2000,
-      "mean_tokens": 137.4,
-      "median_tokens": 124,
-      "p95_tokens": 267,
-      "max_tokens": 349,
+      "sampled": 5,
+      "mean_tokens": 142.6,
+      "median_tokens": 103,
+      "p95_tokens": 191,
+      "max_tokens": 263,
       "examples_with_unk": 0,
       "unk_tokens": 0
     }

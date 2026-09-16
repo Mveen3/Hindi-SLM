@@ -13,7 +13,7 @@
     2,
     3
   ],
-  "pretrained_checkpoint": "/home/mveen/Desktop/S3/lma/project/hindi/checkpoints/checkpoint_step_40000.pt",
+  "pretrained_checkpoint": "/home/mveen/Desktop/S3/slm/hindi/checkpoints/checkpoint_step_40000.pt",
   "finetuned_checkpoint": "/home/mveen/Desktop/S3/lma/project/hindi/checkpoints_finetune/checkpoint_step_936.pt",
   "mean_attention_distance": {
     "per_head": {
