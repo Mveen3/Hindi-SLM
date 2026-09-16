@@ -1,0 +1,23 @@
+{
+  "language": "nepali",
+  "model": "Model L",
+  "seed": 42,
+  "split_ratios": {
+    "train": 0.95,
+    "val": 0.025,
+    "test": 0.025
+  },
+  "documents": {
+    "train": 1637351,
+    "val": 43213,
+    "test": 42809
+  },
+  "bytes": {
+    "train": 8310937696,
+    "val": 221622821,
+    "test": 217802673
+  },
+  "total_documents": 1723373,
+  "total_bytes": 8750363190,
+  "total_mb": 8345.0
+}

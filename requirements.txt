@@ -1,0 +1,28 @@
+# ── Data pipeline (Phase 1) ──────────────────────────────────────────
+datasets>=2.14.0          # streaming curated corpora from the HF Hub
+huggingface_hub>=0.17.0   # corpus download + checkpoint transfer
+python-dotenv>=1.0.0      # HF_TOKEN from .env
+aiohttp>=3.9.0            # async web crawler
+beautifulsoup4>=4.12.0    # HTML content extraction
+lxml>=4.9.0               # bs4 parser backend
+datasketch>=1.6.0         # MinHash LSH near-deduplication
+tqdm>=4.65.0
+
+# ── Model, training, evaluation (Phase 2) ────────────────────────────
+torch>=2.0.0
+tokenizers>=0.15.0        # BPE training and inference (not a pretrained model)
+pyyaml>=6.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# ── Reasoning finetuning data (Phase 3) ──────────────────────────────
+groq>=0.11.0              # gpt-oss-120b authors the in-language phrasing only
+
+# ── Local chat UI (app.py) ───────────────────────────────────────────
+fastapi>=0.110.0
+uvicorn>=0.27.0
+pydantic>=2.0.0
+
+# Attention heatmaps label tokens in Devanagari and need a Devanagari font.
+# On Ubuntu:  sudo apt install fonts-noto-core

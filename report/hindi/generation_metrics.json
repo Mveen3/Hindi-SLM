@@ -1,0 +1,38 @@
+{
+  "greedy": {
+    "bleu_4": 1.8,
+    "chrf": 19.81,
+    "rouge_l": 9.4,
+    "distinct_1": 0.1074,
+    "distinct_2": 0.2201,
+    "repetition_rate_4gram": 0.7139,
+    "num_samples": 100
+  },
+  "temp_0.5": {
+    "bleu_4": 2.32,
+    "chrf": 24.28,
+    "rouge_l": 11.07,
+    "distinct_1": 0.1844,
+    "distinct_2": 0.4901,
+    "repetition_rate_4gram": 0.2901,
+    "num_samples": 100
+  },
+  "temp_1.0": {
+    "bleu_4": 1.53,
+    "chrf": 25.91,
+    "rouge_l": 8.97,
+    "distinct_1": 0.339,
+    "distinct_2": 0.8786,
+    "repetition_rate_4gram": 0.0119,
+    "num_samples": 100
+  },
+  "temp_1.5": {
+    "bleu_4": 0.25,
+    "chrf": 23.58,
+    "rouge_l": 5.83,
+    "distinct_1": 0.4435,
+    "distinct_2": 0.981,
+    "repetition_rate_4gram": 0.0002,
+    "num_samples": 100
+  }
+}

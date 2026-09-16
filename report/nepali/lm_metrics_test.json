@@ -1,0 +1,10 @@
+{
+  "language": "nepali",
+  "model": "Model L",
+  "split": "test",
+  "cross_entropy_loss": 3.4582,
+  "perplexity": 31.76,
+  "bits_per_byte": 0.4298,
+  "total_tokens": 18680873,
+  "total_bytes": 216846656
+}

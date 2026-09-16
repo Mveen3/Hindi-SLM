@@ -1,0 +1,35 @@
+# ============================================================
+# Model Configuration — Hindi (Model H)
+# ============================================================
+# Target: ~24.4M trainable parameters (with weight tying).
+#
+# Depth / width trade-off justification:
+#   d_model=512 with 6 layers balances expressiveness against
+#   the available compute budget (RTX 3050, 4 GB VRAM).
+#   8 attention heads give d_k=64 per head, large enough for
+#   meaningful content-based attention patterns while keeping
+#   the parameter count close to 25M.
+#
+# d_ff = 4 × d_model = 2048 is the standard ratio, providing
+# a higher-dimensional space for non-linear feature mixing.
+# ============================================================
+
+# Vocabulary (from Phase 1 BPE tokenizer — do NOT change)
+vocab_size: 10114
+
+# Architecture
+d_model: 512
+n_layers: 6
+n_heads: 8
+d_ff: 2048
+max_seq_len: 512
+dropout: 0.1
+
+# Weight tying between token embedding and output head
+tie_weights: true
+
+# Special token IDs (from Phase 1 tokenizer)
+pad_token_id: 0    # <pad>
+unk_token_id: 1    # <unk>
+bos_token_id: 2    # <s>
+eos_token_id: 3    # </s>

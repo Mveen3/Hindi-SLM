@@ -1,0 +1,28 @@
+# ============================================================
+# Model Configuration — Nepali (Model L)
+# ============================================================
+# Target: ~24.4M trainable parameters (with weight tying).
+#
+# Identical architecture to Model H; only vocab_size differs
+# because each model uses its own independently trained tokenizer.
+# ============================================================
+
+# Vocabulary (from Phase 1 BPE tokenizer — do NOT change)
+vocab_size: 10121
+
+# Architecture
+d_model: 512
+n_layers: 6
+n_heads: 8
+d_ff: 2048
+max_seq_len: 512
+dropout: 0.1
+
+# Weight tying between token embedding and output head
+tie_weights: true
+
+# Special token IDs (from Phase 1 tokenizer)
+pad_token_id: 0    # <pad>
+unk_token_id: 1    # <unk>
+bos_token_id: 2    # <s>
+eos_token_id: 3    # </s>

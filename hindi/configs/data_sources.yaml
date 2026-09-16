@@ -1,0 +1,111 @@
+# Hindi (Model H) — data source manifest
+# Curated HuggingFace corpora plus the seed domains for our own crawler.
+# Consumed by src.pipeline.download and src.pipeline.crawler via
+# Language.load_sources(); no language names appear in the pipeline code.
+
+huggingface_sources:
+- name: sangraha_verified_hin
+  dataset_id: ai4bharat/sangraha
+  config: verified
+  split: hin
+  text_field: text
+  priority: 1
+  description: Sangraha verified Hindi — highest quality curated data
+  requires_token: false
+- name: indiccorpv2_hin
+  dataset_id: ai4bharat/IndicCorpV2
+  config: indiccorp_v2
+  data_dir: data/hin_Deva
+  split: train
+  text_field: text
+  priority: 2
+  description: IndicCorp V2 Hindi — ACL 2023, large monolingual corpus
+  requires_token: false
+- name: sangraha_unverified_hin
+  dataset_id: ai4bharat/sangraha
+  config: unverified
+  split: hin
+  text_field: text
+  priority: 3
+  description: Sangraha unverified Hindi — web-crawled, less cleaned
+  requires_token: false
+- name: fineweb2_hin
+  dataset_id: HuggingFaceFW/fineweb-2
+  config: hin_Deva
+  split: train
+  text_field: text
+  priority: 4
+  description: FineWeb-2 Hindi — latest high-quality web crawl
+  requires_token: true
+- name: sangraha_synthetic_hin
+  dataset_id: ai4bharat/sangraha
+  config: synthetic
+  split: hin_Deva
+  text_field: text
+  priority: 5
+  description: Sangraha synthetic Hindi — machine-translated content
+  requires_token: false
+- name: oscar_2301_hi
+  dataset_id: oscar-corpus/OSCAR-2301
+  config: hi
+  split: train
+  text_field: text
+  priority: 6
+  description: OSCAR 2301 Hindi — Common Crawl based (requires license agreement)
+  requires_token: true
+crawl_seeds:
+- https://www.grihshobha.in
+- https://www.sarasalil.in
+- https://www.champak.in
+- https://www.mukta.in
+- https://www.suman-saurabh.in
+- https://janjwar.com
+- https://www.nationaldastak.com
+- https://www.thesootr.com
+- https://hindi.livelaw.in
+- https://hindi.siasat.com
+- https://www.bhadas4media.com
+- https://samachar4media.com
+- https://www.dalitdastak.com
+- https://mainmedia.in
+- https://www.samvadnews.in
+- https://thecredibletimes.com
+- https://newsgroundindia.com
+- https://www.jankipul.com
+- https://hindini.com
+- https://www.abhivyakti-hindi.org
+- https://www.anubhuti-hindi.org
+- https://sahityakunj.net
+- https://hindisahityadarpan.in
+- https://www.matrubharti.com
+- https://achhikhabar.com
+- https://hindime.net
+- https://www.hindikiduniya.com
+- https://hindisoch.com
+- https://www.gyanipandit.com
+- https://www.hindivibhag.com
+- https://tutorialpandit.com
+- https://www.techyukti.com
+- https://www.hindisahayta.in
+- https://www.bhaktibharat.com
+- https://www.gitapress.org
+- https://www.uttarakhandpost.com
+- https://www.himachalabhiabhi.com
+- https://www.livecities.in
+- https://www.channel4news.in
+- https://www.jharkhandmirror.com
+- https://www.amarujala.com
+- https://www.jagran.com
+- https://www.livehindustan.com
+- https://www.patrika.com
+- https://www.naidunia.com
+- https://hindi.webdunia.com
+- https://www.myupchar.com
+- https://hindi.news18.com
+- https://www.prabhasakshi.com
+- https://www.haribhoomi.com
+- https://www.onlymyhealth.com
+- https://www.khabarindiatv.com
+- https://www.aajtak.in
+- https://hindi.pratilipi.com
+- https://www.bbc.com/hindi

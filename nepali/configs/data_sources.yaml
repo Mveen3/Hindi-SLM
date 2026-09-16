@@ -1,0 +1,162 @@
+# Nepali (Model L) — data source manifest
+# Curated HuggingFace corpora plus the seed domains for our own crawler.
+# Consumed by src.pipeline.download and src.pipeline.crawler via
+# Language.load_sources(); no language names appear in the pipeline code.
+
+huggingface_sources:
+- name: sangraha_verified_nep
+  dataset_id: ai4bharat/sangraha
+  config: verified
+  split: nep
+  text_field: text
+  priority: 1
+  description: Sangraha verified Nepali — highest quality curated data
+  requires_token: false
+- name: nepali_text_corpus
+  dataset_id: IRIIS-RESEARCH/Nepali-Text-Corpus
+  config: null
+  split: train
+  text_field: Article
+  priority: 2
+  description: IRIIS Nepali Text Corpus — 27.5 GB from 99 news websites (LARGEST)
+  requires_token: false
+- name: indiccorpv2_nep
+  dataset_id: ai4bharat/IndicCorpV2
+  config: indiccorp_v2
+  data_dir: data/npi_Deva
+  split: train
+  text_field: text
+  priority: 3
+  description: IndicCorp V2 Nepali — ACL 2023 monolingual corpus
+  requires_token: false
+- name: sangraha_unverified_nep
+  dataset_id: ai4bharat/sangraha
+  config: unverified
+  split: nep
+  text_field: text
+  priority: 4
+  description: Sangraha unverified Nepali — web-crawled, less cleaned
+  requires_token: false
+- name: nepali_corpus_boredoom
+  dataset_id: Boredoom17/Nepali-Corpus
+  config: null
+  split: train
+  text_field: text
+  priority: 5
+  description: Boredoom17 Nepali Corpus — 7.1M rows from news, wiki, YouTube
+  requires_token: false
+- name: fineweb2_nep
+  dataset_id: HuggingFaceFW/fineweb-2
+  config: npi_Deva
+  split: train
+  text_field: text
+  priority: 6
+  description: FineWeb-2 Nepali — latest high-quality web crawl
+  requires_token: true
+- name: sangraha_synthetic_nep
+  dataset_id: ai4bharat/sangraha
+  config: synthetic
+  split: npi_Deva
+  text_field: text
+  priority: 7
+  description: Sangraha synthetic Nepali — machine-translated content
+  requires_token: false
+- name: nepalitext_lm_dataset
+  dataset_id: Sakonii/nepalitext-language-model-dataset
+  config: null
+  split: train
+  text_field: text
+  priority: 8
+  description: Sakonii Nepali LM dataset — 13M sequences for pretraining
+  requires_token: false
+- name: oscar_2301_ne
+  dataset_id: oscar-corpus/OSCAR-2301
+  config: ne
+  split: train
+  text_field: text
+  priority: 9
+  description: OSCAR 2301 Nepali — Common Crawl based (requires license agreement)
+  requires_token: true
+crawl_seeds:
+- https://ekantipur.com
+- https://www.onlinekhabar.com
+- https://www.setopati.com
+- https://ratopati.com
+- https://www.nayapatrikadaily.com
+- https://www.annapurnapost.com
+- https://nagariknews.nagariknetwork.com
+- https://www.gorkhapatraonline.com
+- https://www.nepalkhabar.com
+- https://thahakhabar.com
+- https://www.baahrakhari.com
+- https://www.dcnepal.com
+- https://lokaantar.com
+- https://www.pahilopost.com
+- https://swasthyakhabar.com
+- https://www.khabarhub.com
+- https://nepalpress.com
+- https://ukeraa.com
+- https://www.hamrakura.com
+- https://www.reportersnepal.com
+- https://www.newsofnepal.com
+- https://www.himalkhabar.com
+- https://www.sajhapost.com
+- https://www.nepalpage.com
+- https://www.nepalviews.com
+- https://www.bizmandu.com
+- https://clickmandu.com
+- https://www.arthasarokar.com
+- https://bizpati.com
+- https://www.corporatenepal.com
+- https://www.merolagani.com
+- https://www.nepalkhabar.net
+- https://www.himalayatimes.com.np
+- https://www.nepalaajakhabar.com
+- https://www.nepalmandal.com
+- https://www.himalinews.com
+- https://www.karnalikhabar.com
+- https://www.madhesbani.com
+- https://www.sudurpashchimtoday.com
+- https://www.gandakikhabar.com
+- https://www.pokharapati.com
+- https://www.terainews.com
+- https://www.lumbinitoday.com
+- https://www.koshikhabar.com
+- https://www.birgunjtoday.com
+- https://www.shabdasansar.com
+- https://www.sahityapost.com
+- https://www.madhupark.gov.np
+- https://nepalisahitya.com
+- https://www.kavitakosh.org
+- https://www.deshsanchar.com
+- https://www.nepalitimes.com
+- https://www.himalmedia.com
+- https://www.khelkhabar.com
+- https://www.goalnepal.com
+- https://www.nepalisansar.com
+- https://filmykhabar.com
+- https://www.cinemakhabar.com
+- https://www.nepalicinema.com
+- https://www.techpana.com
+- https://nepalitelecom.com
+- https://www.ictframe.com
+- https://edukhabar.com
+- https://www.shikshapatra.com
+- https://www.healthpost.com.np
+- https://www.swasthyasarokar.com
+- https://www.krishisanchar.com
+- https://www.agriculturenepal.com
+- https://www.hamrokrishi.com
+- https://www.nepalnews.com
+- https://www.nepalbritain.com
+- https://www.nepalikhabar.com
+- https://www.everestnews.com
+- https://www.nepalgunj.com
+- https://www.imagekhabar.com
+- https://www.nepalpatra.com
+- https://www.janaawaj.com
+- https://www.samakalinsahitya.com
+- https://www.nepalsamaya.com
+- https://www.chitwanpost.com
+- https://www.rastriyasamachar.com
+- https://www.newsnepal.com

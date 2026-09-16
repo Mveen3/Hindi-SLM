@@ -1,0 +1,458 @@
+{
+  "language": "nepali",
+  "model": "Model L",
+  "tier": "lower-resource",
+  "seed": 2718,
+  "numeral_script": "devanagari",
+  "split_sizes_requested": {
+    "train": 40000,
+    "val": 2500,
+    "test": 2500
+  },
+  "direct_answer_fraction": 0.0,
+  "max_sequence_tokens": 448,
+  "tasks": {
+    "compare_two_more": {
+      "fact_kind": "value",
+      "hops": 1,
+      "weight": 1.0,
+      "description": "Two stated values; which entity is greater."
+    },
+    "compare_two_less": {
+      "fact_kind": "value",
+      "hops": 1,
+      "weight": 1.0,
+      "description": "Two stated values; which entity is smaller."
+    },
+    "compare_equal": {
+      "fact_kind": "value",
+      "hops": 1,
+      "weight": 0.8,
+      "description": "Two stated values; are they equal (yes/no)."
+    },
+    "numeric_difference": {
+      "fact_kind": "value",
+      "hops": 1,
+      "weight": 0.8,
+      "description": "Two stated values; by how much one exceeds the other."
+    },
+    "verify_claim": {
+      "fact_kind": "value",
+      "hops": 1,
+      "weight": 0.8,
+      "description": "Verify a comparative claim against stated values (yes/no)."
+    },
+    "middle_entity": {
+      "fact_kind": "value",
+      "hops": 2,
+      "weight": 0.8,
+      "description": "Three stated values; which is in the middle."
+    },
+    "order_ascending": {
+      "fact_kind": "value",
+      "hops": 2,
+      "weight": 0.9,
+      "description": "Sort 3-4 entities from smallest to largest."
+    },
+    "order_descending": {
+      "fact_kind": "value",
+      "hops": 2,
+      "weight": 0.9,
+      "description": "Sort 3-4 entities from largest to smallest."
+    },
+    "transitive_relation": {
+      "fact_kind": "relation",
+      "hops": 2,
+      "weight": 1.3,
+      "description": "A>B, B>C: relation between A and C."
+    },
+    "transitive_largest": {
+      "fact_kind": "relation",
+      "hops": 2,
+      "weight": 1.1,
+      "description": "Largest of three from chained inequalities."
+    },
+    "transitive_smallest": {
+      "fact_kind": "relation",
+      "hops": 2,
+      "weight": 1.1,
+      "description": "Smallest of three from chained inequalities."
+    },
+    "chain_relation": {
+      "fact_kind": "relation",
+      "hops": 3,
+      "weight": 1.2,
+      "description": "Multi-hop relation over a 4-5 entity chain."
+    },
+    "chain_largest": {
+      "fact_kind": "relation",
+      "hops": 3,
+      "weight": 1.0,
+      "description": "Largest over a 4-5 entity chain."
+    },
+    "chain_smallest": {
+      "fact_kind": "relation",
+      "hops": 3,
+      "weight": 1.0,
+      "description": "Smallest over a 4-5 entity chain."
+    },
+    "mixed_direction_chain": {
+      "fact_kind": "relation",
+      "hops": 3,
+      "weight": 1.2,
+      "description": "Chain with mixed more/less premises requiring normalisation."
+    }
+  },
+  "phrasebank": {
+    "source": "llm+seed",
+    "llm_model": "openai/gpt-oss-120b",
+    "generated_at": "2026-09-10T20:03:07+00:00",
+    "templates_per_slot": {
+      "fact": 12,
+      "rel_fact": 11,
+      "q_which_of_two": 12,
+      "q_extreme": 12,
+      "q_equality": 12,
+      "q_difference": 11,
+      "q_ordering": 12,
+      "q_middle": 11,
+      "q_verify": 7,
+      "fact_step": 10,
+      "rel_step": 9,
+      "deduce_step": 10,
+      "flip_step": 10,
+      "diff_step": 9,
+      "order_step": 9,
+      "equal_step": 10,
+      "conclusion_step": 8
+    },
+    "total_templates": 175,
+    "entity_pool_sizes": {
+      "people": 57,
+      "cities": 52,
+      "objects": 49,
+      "animals": 44,
+      "fruits": 50
+    },
+    "attributes": 9
+  },
+  "authoring": {
+    "source": "llm+seed (cached)",
+    "api_calls": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "templates_accepted": {},
+    "templates_rejected": {},
+    "rejection_examples": [],
+    "entities_added": {},
+    "attributes_overridden": []
+  },
+  "resources": {
+    "entity_pool_sizes": {
+      "train": {
+        "people": 31,
+        "cities": 28,
+        "objects": 27,
+        "animals": 24,
+        "fruits": 27
+      },
+      "val": {
+        "people": 10,
+        "cities": 9,
+        "objects": 9,
+        "animals": 8,
+        "fruits": 9
+      },
+      "test": {
+        "people": 16,
+        "cities": 15,
+        "objects": 13,
+        "animals": 12,
+        "fruits": 14
+      }
+    },
+    "template_pool_sizes": {
+      "train": {
+        "fact": 6,
+        "rel_fact": 5,
+        "q_which_of_two": 6,
+        "q_extreme": 6,
+        "q_equality": 6,
+        "q_difference": 5,
+        "q_ordering": 6,
+        "q_middle": 5,
+        "q_verify": 3,
+        "fact_step": 10,
+        "rel_step": 9,
+        "deduce_step": 10,
+        "flip_step": 10,
+        "diff_step": 9,
+        "order_step": 9,
+        "equal_step": 10,
+        "conclusion_step": 8
+      },
+      "val": {
+        "fact": 2,
+        "rel_fact": 2,
+        "q_which_of_two": 2,
+        "q_extreme": 2,
+        "q_equality": 2,
+        "q_difference": 2,
+        "q_ordering": 2,
+        "q_middle": 2,
+        "q_verify": 1,
+        "fact_step": 10,
+        "rel_step": 9,
+        "deduce_step": 10,
+        "flip_step": 10,
+        "diff_step": 9,
+        "order_step": 9,
+        "equal_step": 10,
+        "conclusion_step": 8
+      },
+      "test": {
+        "fact": 4,
+        "rel_fact": 4,
+        "q_which_of_two": 4,
+        "q_extreme": 4,
+        "q_equality": 4,
+        "q_difference": 4,
+        "q_ordering": 4,
+        "q_middle": 4,
+        "q_verify": 3,
+        "fact_step": 10,
+        "rel_step": 9,
+        "deduce_step": 10,
+        "flip_step": 10,
+        "diff_step": 9,
+        "order_step": 9,
+        "equal_step": 10,
+        "conclusion_step": 8
+      }
+    },
+    "held_out_slots": [
+      "fact",
+      "rel_fact",
+      "q_which_of_two",
+      "q_extreme",
+      "q_equality",
+      "q_difference",
+      "q_ordering",
+      "q_middle",
+      "q_verify"
+    ],
+    "shared_slots": [
+      "fact_step",
+      "rel_step",
+      "deduce_step",
+      "flip_step",
+      "diff_step",
+      "order_step",
+      "equal_step",
+      "conclusion_step"
+    ]
+  },
+  "splits": {
+    "train": {
+      "examples": 40000,
+      "unique_prompts": 40000,
+      "unique_answers": 5544,
+      "by_task": {
+        "chain_largest": 2744,
+        "chain_relation": 3228,
+        "chain_smallest": 2600,
+        "compare_equal": 2164,
+        "compare_two_less": 2699,
+        "compare_two_more": 2791,
+        "middle_entity": 2072,
+        "mixed_direction_chain": 3203,
+        "numeric_difference": 2094,
+        "order_ascending": 2371,
+        "order_descending": 2345,
+        "transitive_largest": 2957,
+        "transitive_relation": 3546,
+        "transitive_smallest": 3011,
+        "verify_claim": 2175
+      },
+      "by_fact_kind": {
+        "relation": 21289,
+        "value": 18711
+      },
+      "by_hops": {
+        "1": 11923,
+        "2": 16302,
+        "3": 11775
+      },
+      "by_attribute": {
+        "age": 4577,
+        "distance": 4426,
+        "height": 4471,
+        "population": 4528,
+        "price": 4302,
+        "quantity": 4295,
+        "speed": 4460,
+        "temperature": 4505,
+        "weight": 4436
+      },
+      "by_style": {
+        "cot": 40000
+      },
+      "by_n_entities": {
+        "2": 11923,
+        "3": 15028,
+        "4": 7680,
+        "5": 5369
+      },
+      "mean_prompt_chars": 184.5,
+      "mean_reasoning_chars": 267.7
+    },
+    "val": {
+      "examples": 2500,
+      "unique_prompts": 2500,
+      "unique_answers": 467,
+      "by_task": {
+        "chain_largest": 181,
+        "chain_relation": 217,
+        "chain_smallest": 173,
+        "compare_equal": 110,
+        "compare_two_less": 164,
+        "compare_two_more": 155,
+        "middle_entity": 132,
+        "mixed_direction_chain": 196,
+        "numeric_difference": 118,
+        "order_ascending": 150,
+        "order_descending": 163,
+        "transitive_largest": 184,
+        "transitive_relation": 238,
+        "transitive_smallest": 179,
+        "verify_claim": 140
+      },
+      "by_fact_kind": {
+        "relation": 1368,
+        "value": 1132
+      },
+      "by_hops": {
+        "1": 687,
+        "2": 1046,
+        "3": 767
+      },
+      "by_attribute": {
+        "age": 257,
+        "distance": 249,
+        "height": 277,
+        "population": 306,
+        "price": 279,
+        "quantity": 273,
+        "speed": 297,
+        "temperature": 284,
+        "weight": 278
+      },
+      "by_style": {
+        "cot": 2500
+      },
+      "by_n_entities": {
+        "2": 687,
+        "3": 929,
+        "4": 559,
+        "5": 325
+      },
+      "mean_prompt_chars": 170.5,
+      "mean_reasoning_chars": 272.0
+    },
+    "test": {
+      "examples": 2500,
+      "unique_prompts": 2500,
+      "unique_answers": 468,
+      "by_task": {
+        "chain_largest": 175,
+        "chain_relation": 183,
+        "chain_smallest": 175,
+        "compare_equal": 131,
+        "compare_two_less": 169,
+        "compare_two_more": 184,
+        "middle_entity": 145,
+        "mixed_direction_chain": 186,
+        "numeric_difference": 146,
+        "order_ascending": 140,
+        "order_descending": 128,
+        "transitive_largest": 196,
+        "transitive_relation": 201,
+        "transitive_smallest": 197,
+        "verify_claim": 144
+      },
+      "by_fact_kind": {
+        "relation": 1313,
+        "value": 1187
+      },
+      "by_hops": {
+        "1": 774,
+        "2": 1007,
+        "3": 719
+      },
+      "by_attribute": {
+        "age": 277,
+        "distance": 268,
+        "height": 270,
+        "population": 264,
+        "price": 305,
+        "quantity": 303,
+        "speed": 276,
+        "temperature": 253,
+        "weight": 284
+      },
+      "by_style": {
+        "cot": 2500
+      },
+      "by_n_entities": {
+        "2": 774,
+        "3": 930,
+        "4": 449,
+        "5": 347
+      },
+      "mean_prompt_chars": 166.9,
+      "mean_reasoning_chars": 267.3
+    }
+  },
+  "token_stats": {
+    "train": {
+      "available": true,
+      "sampled": 2000,
+      "mean_tokens": 134.5,
+      "median_tokens": 121,
+      "p95_tokens": 250,
+      "max_tokens": 348,
+      "examples_with_unk": 0,
+      "unk_tokens": 0
+    },
+    "val": {
+      "available": true,
+      "sampled": 2000,
+      "mean_tokens": 134.8,
+      "median_tokens": 124,
+      "p95_tokens": 258,
+      "max_tokens": 324,
+      "examples_with_unk": 0,
+      "unk_tokens": 0
+    },
+    "test": {
+      "available": true,
+      "sampled": 2000,
+      "mean_tokens": 131.2,
+      "median_tokens": 117,
+      "p95_tokens": 249,
+      "max_tokens": 319,
+      "examples_with_unk": 0,
+      "unk_tokens": 0
+    }
+  },
+  "leakage": {
+    "entity_names_shared_between_splits": {},
+    "held_out_templates_shared_between_splits": {},
+    "prompts_shared_between_splits": {
+      "train-val": 0,
+      "train-test": 0,
+      "val-test": 0
+    },
+    "clean": true
+  }
+}

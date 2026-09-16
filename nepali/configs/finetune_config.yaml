@@ -1,0 +1,73 @@
+# ============================================================
+# Phase 3 — Reasoning Finetuning — Nepali (Model L)
+# ============================================================
+# Consumed by python main.py finetune (src.training.finetune). Architecture keys are NOT here: they are
+# read from model_config.yaml, because the brief requires the tokenizer,
+# vocabulary and architecture to stay fixed across finetuning. Only the
+# optimisation settings differ from pretraining.
+#
+# Independent of hindi/configs/finetune_config.yaml: each model starts from
+# its own pretrained checkpoint and trains on its own reasoning corpus.
+#
+# Sized for an RTX 3050 (4 GB). Measured on that GPU: batch 16 x 384 tokens
+# peaks at 2.6 GB and runs ~33k tokens/s, so a full 3-epoch run over 40,000
+# examples takes roughly 10-20 minutes.
+# ============================================================
+
+# ---- Data ----------------------------------------------------------------
+# Splits come from <language>/data/reasoning/, produced by
+# python main.py reasoning-data (src.data.reasoning_data). Entity names and question phrasings are
+# disjoint across train/val/test, so val and test measure generalisation.
+
+# ---- Batching ------------------------------------------------------------
+# Effective batch = batch_size x gradient_accumulation_steps = 128 sequences,
+# matching the pretraining effective batch so the LR is in a familiar regime.
+batch_size: 16
+gradient_accumulation_steps: 8
+num_workers: 2
+
+# ---- Optimizer -----------------------------------------------------------
+# AdamW, as in pretraining. The learning rate is ~20x lower than pretraining's
+# 3e-4: the model already speaks Nepali, and finetuning only has to teach the
+# task format and the comparison behaviour. A pretraining-scale LR here erases
+# the language modelling ability it spent 40k steps acquiring.
+#
+# Model L is the lower-resource model and starts from a weaker pretrained
+# checkpoint, but the LR and epoch budget are kept IDENTICAL to Model H's on
+# purpose: the Phase 3 comparison between the two resource tiers must not be
+# confounded by a difference in finetuning effort.
+optimizer: "adamw"
+learning_rate: 1.5e-5
+weight_decay: 0.01
+betas: [0.9, 0.95]
+eps: 1.0e-8
+max_grad_norm: 1.0
+
+# ---- Schedule ------------------------------------------------------------
+# Cosine decay with a short warmup (3% of total steps, computed automatically
+# when warmup_steps is null). max_steps is derived from epochs x steps-per-epoch
+# unless set explicitly here.
+lr_scheduler: "cosine"
+epochs: 3
+max_steps: null
+warmup_steps: null
+
+# ---- Evaluation / logging / checkpointing --------------------------------
+# Checkpoints use the identical resume-capable format as pretraining: weights,
+# optimizer state, scheduler state, AMP scaler, step and full config.
+eval_interval: 100
+log_interval: 25
+save_interval: 200
+eval_max_batches: 50
+
+# ---- Mixed precision -----------------------------------------------------
+use_amp: true
+
+# ---- Checkpoint resume ---------------------------------------------------
+# "latest" auto-resumes an interrupted finetuning run from
+# nepali/checkpoints_finetune/. On a fresh run that directory is empty, so
+# training starts from the Phase 2 pretrained checkpoint instead.
+resume_from: "latest"
+
+# ---- Reproducibility -----------------------------------------------------
+seed: 42

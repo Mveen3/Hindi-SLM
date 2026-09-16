@@ -1,0 +1,90 @@
+# ============================================================
+# Phase 3 — Synthetic Reasoning Dataset — Hindi (Model H)
+# ============================================================
+# Consumed by python main.py reasoning-data (src.data.reasoning_data).
+# This file is independent of nepali/configs/reasoning_config.yaml:
+# the two corpora share no names, no templates and no examples.
+# ============================================================
+
+# Reproducibility: this seed fixes the entity/template partitioning and every
+# value sampled, so the whole corpus is byte-identical on a re-run.
+seed: 1337
+
+# Hindi web text overwhelmingly writes numbers in ASCII digits, and the Phase 1
+# Hindi tokenizer reflects that (174 vocabulary entries contain 0-9 against only
+# 30 containing ०-९). Matching the pretraining corpus keeps numbers inside the
+# frozen vocabulary instead of fragmenting them.
+numeral_script: ascii
+
+# Split sizes. Train is large enough to finetune a 25M-parameter model to
+# convergence in a few thousand steps; val/test are sized for stable accuracy
+# estimates without wasting generation time.
+splits:
+  train: 40000
+  val: 2500
+  test: 2500
+
+# ---- Train/test leakage control -----------------------------------------
+# Entity names and premise/question phrasings are partitioned DISJOINTLY across
+# the splits, so a test question uses names the model never trained on and asks
+# in sentence patterns it never trained on. Chain-of-thought step phrasings are
+# deliberately shared: they are the output style being taught, not a
+# generalisation axis, and accuracy is scored on the final answer only.
+entity_split_fractions:
+  train: 0.60
+  val: 0.15
+  test: 0.25
+
+template_split_fractions:
+  train: 0.60
+  val: 0.15
+  test: 0.25
+
+# ---- Task mixture --------------------------------------------------------
+# Relative sampling weights. Transitive / multi-hop chaining is weighted above
+# single-step comparison because it is the reasoning skill Phase 3 targets.
+task_weights:
+  compare_two_more: 1.0
+  compare_two_less: 1.0
+  compare_equal: 0.8
+  numeric_difference: 0.8
+  verify_claim: 0.8
+  middle_entity: 0.8
+  order_ascending: 0.9
+  order_descending: 0.9
+  transitive_relation: 1.3
+  transitive_largest: 1.1
+  transitive_smallest: 1.1
+  chain_relation: 1.2
+  chain_largest: 1.0
+  chain_smallest: 1.0
+  mixed_direction_chain: 1.2
+
+# Hard cap on the tokenized length of one finetuning sequence, measured with
+# the frozen Phase 1 Hindi tokenizer. The pretrained context is 512 tokens, so
+# anything longer would be truncated mid-chain-of-thought and train the model on
+# an answer that was cut off. Over-length examples are re-sampled instead.
+max_sequence_tokens: 448
+
+# Fraction of examples that ask for the answer with no reasoning trace.
+# 0.0 keeps every target in "प्रश्न / तर्क / उत्तर" chain-of-thought form.
+direct_answer_fraction: 0.0
+
+# ---- In-language phrasing author (Groq) ----------------------------------
+# gpt-oss-120b writes only the WORDING (templates, names, attribute vocabulary);
+# all values and labels are computed in Python. Limits sit just under the free
+# tier's 30 req/min and 8K tokens/min. Authoring costs 8 requests and ~28K tokens
+# and takes roughly 5-10 minutes: the tokens/min ceiling binds long before the
+# request count does. The result is cached in
+# hindi/data/reasoning/phrasebank.json, so the API is called once.
+llm:
+  model: openai/gpt-oss-120b
+  templates_per_slot: 8
+  entities_per_pool: 30
+  slots_per_request: 3
+  temperature: 0.9
+  reasoning_effort: low
+  max_output_tokens: 1600
+  requests_per_minute: 25
+  tokens_per_minute: 7000
+  max_retries: 4
