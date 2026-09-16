@@ -20,6 +20,7 @@ import gc
 import json
 import logging
 import os
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -33,13 +34,17 @@ from src.languages import Language, PROJECT_ROOT
 # Configuration
 # ──────────────────────────────────────────────────────────────────────────────
 
+# Default token target per language for curated data:
+# 900M tokens curated + ~200M crawled tokens ensures total corpus exceeds 1B tokens (> 1.1B total).
+DEFAULT_MAX_TOKENS = 900_000_000
+
 # Average bytes per token for Devanagari text (rough estimate).
 # Devanagari characters are typically 3 bytes in UTF-8, and a BPE token
-# covers ~2-3 characters on average, so ~4-6 bytes per token.
+# covers ~2-3 characters on average, so ~4-6 characters (~10 bytes per token).
 BYTES_PER_TOKEN_ESTIMATE = 10
 
-# Default token target per language (80% of 500M)
-DEFAULT_MAX_BYTES = 7 * 1024 * 1024 * 1024
+# Default byte safety threshold derived from 900M tokens: ~9 GB (9 * 1024^3 bytes = ~9.66 GB)
+DEFAULT_MAX_BYTES = 9 * 1024 * 1024 * 1024
 
 # Flush interval: write to disk every N records
 FLUSH_INTERVAL = 10_000
@@ -221,7 +226,9 @@ def load_checkpoint(name: str, output_dir: Path, output_file: Path) -> dict:
 def download_source(
     source: dict,
     output_dir: Path,
-    max_bytes: int,
+    max_tokens: int | None,
+    current_tokens: int,
+    max_bytes: int | None,
     current_bytes: int,
     hf_token: str | None,
     dry_run: bool = False,
@@ -243,9 +250,14 @@ def download_source(
     text_field = source.get("text_field", "text")
     requires_token = source.get("requires_token", False)
 
-    remaining_bytes = max_bytes - current_bytes
-    if remaining_bytes <= 0:
-        logging.info(f"  ⏭  Skipping {name} — size target already reached.")
+    target_already_reached = False
+    if max_tokens is not None and current_tokens >= max_tokens:
+        target_already_reached = True
+    elif max_bytes is not None and current_bytes >= max_bytes:
+        target_already_reached = True
+
+    if target_already_reached:
+        logging.info(f"  ⏭  Skipping {name} — target already reached.")
         return {"name": name, "status": "skipped_target_reached", "tokens": 0, "rows": 0, "bytes": 0}
 
     output_file = output_dir / f"{name}.jsonl"
@@ -281,8 +293,18 @@ def download_source(
         }
 
     # If existing data satisfies the remaining budget
-    if existing_tokens > 0 and (current_bytes + existing_bytes >= max_bytes):
-        logging.info(f"     ✅ Existing data already satisfies token target ({format_bytes(current_bytes + existing_bytes)} total).")
+    satisfies_budget = False
+    if existing_tokens > 0:
+        if max_tokens is not None and (current_tokens + existing_tokens >= max_tokens):
+            satisfies_budget = True
+        elif max_bytes is not None and (current_bytes + existing_bytes >= max_bytes):
+            satisfies_budget = True
+
+    if satisfies_budget:
+        logging.info(
+            f"     ✅ Existing data already satisfies target "
+            f"({format_tokens(current_tokens + existing_tokens)} tokens / {format_bytes(current_bytes + existing_bytes)} total)."
+        )
         save_checkpoint(name, output_dir, {
             "name": name,
             "rows": existing_rows,
@@ -305,14 +327,19 @@ def download_source(
             "end_time": datetime.now().isoformat(),
         }
 
-    effective_remaining = max_bytes - (current_bytes + existing_bytes)
     logging.info(f"  📥 Source: {name}")
     logging.info(f"     Dataset: {dataset_id} | Config: {config} | Split: {split}")
     logging.info(f"     Description: {source['description']}")
-    logging.info(f"     Remaining byte budget: {format_bytes(effective_remaining)}")
+    if max_tokens is not None:
+        rem_tokens = max(0, max_tokens - (current_tokens + existing_tokens))
+        logging.info(f"     Remaining token budget: {format_tokens(rem_tokens)}")
+    if max_bytes is not None:
+        rem_bytes = max(0, max_bytes - (current_bytes + existing_bytes))
+        logging.info(f"     Remaining byte budget:  {format_bytes(rem_bytes)}")
 
     if dry_run:
         logging.info(f"     [DRY RUN] Would download from {dataset_id}")
+        return {"name": name, "status": "dry_run", "tokens": existing_tokens, "rows": existing_rows, "bytes": existing_bytes}
         return {"name": name, "status": "dry_run", "tokens": existing_tokens, "rows": existing_rows, "bytes": existing_bytes}
 
     stats = {
@@ -430,11 +457,13 @@ def download_source(
                         "size": format_bytes(source_bytes),
                     })
 
-                # Check if we've hit the token budget for this language
-                if current_bytes + source_bytes >= max_bytes:
+                # Check if we've hit the token budget or byte budget for this language
+                hit_tokens = (max_tokens is not None and (current_tokens + source_tokens) >= max_tokens)
+                hit_bytes = (max_bytes is not None and (current_bytes + source_bytes) >= max_bytes)
+                if hit_tokens or hit_bytes:
+                    reason = f"{format_tokens(current_tokens + source_tokens)} tokens" if hit_tokens else f"{format_bytes(current_bytes + source_bytes)}"
                     logging.info(
-                        f"     ✅ Size target reached! "
-                        f"({format_bytes(current_bytes + source_bytes)} total)"
+                        f"     ✅ Target reached! ({reason} total)"
                     )
                     break
 
@@ -500,7 +529,8 @@ def download_language(
     language: str,
     sources: list[dict],
     output_dir: Path,
-    max_bytes: int,
+    max_tokens: int | None,
+    max_bytes: int | None,
     hf_token: str | None,
     dry_run: bool = False,
     force_redownload: bool = False,
@@ -517,7 +547,10 @@ def download_language(
     logging.info(f"\n{'='*70}")
     logging.info(f"  DOWNLOADING: {language.upper()}")
     logging.info(f"  Output: {lang_dir}")
-    logging.info(f"  Size target: {format_bytes(max_bytes)}")
+    if max_tokens is not None:
+        logging.info(f"  Token target: {format_tokens(max_tokens)} (~{max_tokens:,} tokens)")
+    if max_bytes is not None:
+        logging.info(f"  Size target:  {format_bytes(max_bytes)}")
     logging.info(f"  Sources: {len(sources)}")
     logging.info(f"{'='*70}\n")
 
@@ -530,14 +563,17 @@ def download_language(
     source_stats = []
 
     for i, source in enumerate(sorted_sources, 1):
-        if total_bytes >= max_bytes:
-            logging.info(f"\n  🎯 Size target reached for {language}!")
+        if (max_tokens is not None and total_tokens >= max_tokens) or \
+           (max_bytes is not None and total_bytes >= max_bytes):
+            logging.info(f"\n  🎯 Target reached for {language} ({format_tokens(total_tokens)} tokens)!")
             break
 
         logging.info(f"\n[{i}/{len(sorted_sources)}] Processing source...")
         stats = download_source(
             source=source,
             output_dir=lang_dir,
+            max_tokens=max_tokens,
+            current_tokens=total_tokens,
             max_bytes=max_bytes,
             current_bytes=total_bytes,
             hf_token=hf_token,
@@ -551,15 +587,19 @@ def download_language(
         total_bytes += stats.get("bytes", 0)
 
         # Save intermediate manifest checkpoint after every source
+        target_reached = ((max_tokens is not None and total_tokens >= max_tokens) or
+                          (max_bytes is not None and total_bytes >= max_bytes))
         interim_summary = {
             "language": language,
             "output_dir": str(lang_dir),
             "total_tokens_estimated": total_tokens,
             "total_rows": total_rows,
             "total_bytes": total_bytes,
+            "target_tokens": max_tokens,
             "target_bytes": max_bytes,
-            "target_reached": total_bytes >= max_bytes,
-            "shortfall_bytes": max(0, max_bytes - total_bytes),
+            "target_reached": target_reached,
+            "shortfall_tokens": max(0, max_tokens - total_tokens) if max_tokens else 0,
+            "shortfall_bytes": max(0, max_bytes - total_bytes) if max_bytes else 0,
             "sources": source_stats,
             "timestamp": datetime.now().isoformat(),
         }
@@ -570,6 +610,8 @@ def download_language(
             logging.warning(f"  ⏸ Language {language} download paused due to interruption.")
             break
 
+    target_reached = ((max_tokens is not None and total_tokens >= max_tokens) or
+                      (max_bytes is not None and total_bytes >= max_bytes))
     # Summary
     summary = {
         "language": language,
@@ -577,12 +619,21 @@ def download_language(
         "total_tokens_estimated": total_tokens,
         "total_rows": total_rows,
         "total_bytes": total_bytes,
+        "target_tokens": max_tokens,
         "target_bytes": max_bytes,
-        "target_reached": total_bytes >= max_bytes,
-        "shortfall_bytes": max(0, max_bytes - total_bytes),
+        "target_reached": target_reached,
+        "shortfall_tokens": max(0, max_tokens - total_tokens) if max_tokens else 0,
+        "shortfall_bytes": max(0, max_bytes - total_bytes) if max_bytes else 0,
         "sources": source_stats,
         "timestamp": datetime.now().isoformat(),
     }
+
+    target_desc = []
+    if max_tokens is not None:
+        target_desc.append(f"{format_tokens(max_tokens)} tokens")
+    if max_bytes is not None:
+        target_desc.append(format_bytes(max_bytes))
+    target_str = " / ".join(target_desc)
 
     logging.info(f"\n{'─'*70}")
     logging.info(f"  {language.upper()} SUMMARY")
@@ -590,10 +641,15 @@ def download_language(
     logging.info(f"  Total documents: {total_rows:,}")
     logging.info(f"  Total tokens (est.): {format_tokens(total_tokens)}")
     logging.info(f"  Total size: {format_bytes(total_bytes)}")
-    logging.info(f"  Target reached: {'✅ YES' if total_bytes >= max_bytes else '❌ NO'}")
-    if total_bytes < max_bytes:
+    logging.info(f"  Target reached: {'✅ YES' if target_reached else '❌ NO'} (Target: {target_str})")
+    if not target_reached:
+        shortfalls = []
+        if max_tokens is not None and total_tokens < max_tokens:
+            shortfalls.append(f"{format_tokens(max_tokens - total_tokens)} tokens")
+        if max_bytes is not None and total_bytes < max_bytes:
+            shortfalls.append(format_bytes(max_bytes - total_bytes))
         logging.info(
-            f"  Shortfall: {format_bytes(max_bytes - total_bytes)} "
+            f"  Shortfall: {' / '.join(shortfalls)} "
             f"(need to supplement with manual collection or additional sources)"
         )
     logging.info(f"{'─'*70}\n")
@@ -610,16 +666,18 @@ def download_language(
 # Main
 # ──────────────────────────────────────────────────────────────────────────────
 
-def run(lang: Language, max_bytes: int = DEFAULT_MAX_BYTES, output_dir: str = None,
-        env_file: str = None, dry_run: bool = False, force_redownload: bool = False,
-        skip_sources: list = None, verbose: bool = False) -> dict:
+def run(lang: Language, max_tokens: int = DEFAULT_MAX_TOKENS, max_bytes: int = None,
+        output_dir: str = None, env_file: str = None, dry_run: bool = False,
+        force_redownload: bool = False, skip_sources: list = None,
+        verbose: bool = False) -> dict:
     """
     Download one language's curated sources.
 
     Args:
         lang:             Language to download for. Its data_sources.yaml
                           supplies the dataset list; its data/raw/ receives them.
-        max_bytes:        Byte target; downloading stops once it is reached.
+        max_tokens:       Token target; downloading stops once it is reached (default: 900M).
+        max_bytes:        Optional byte target override.
         output_dir:       Override for ``<language>/data/raw``.
         env_file:         Path to the .env holding HF_TOKEN.
         dry_run:          Preview only; download nothing.
@@ -644,7 +702,10 @@ def run(lang: Language, max_bytes: int = DEFAULT_MAX_BYTES, output_dir: str = No
     logging.info("=" * 70)
     logging.info("  LMA — Curated Corpus Download")
     logging.info(f"  Language:     {lang.display} ({lang.model_label})")
-    logging.info(f"  Size target:  {format_bytes(max_bytes)}")
+    if max_tokens is not None:
+        logging.info(f"  Token target: {format_tokens(max_tokens)} (~{max_tokens:,} tokens)")
+    if max_bytes is not None:
+        logging.info(f"  Size target:  {format_bytes(max_bytes)}")
     logging.info(f"  Output dir:   {output_path}")
     logging.info(f"  Dry run:      {dry_run}")
     logging.info(f"  Resumable:    {'no (force redownload)' if force_redownload else 'yes'}")
@@ -656,6 +717,7 @@ def run(lang: Language, max_bytes: int = DEFAULT_MAX_BYTES, output_dir: str = No
         language=lang.key,
         sources=sources,
         output_dir=output_path,
+        max_tokens=max_tokens,
         max_bytes=max_bytes,
         hf_token=hf_token,
         dry_run=dry_run,
@@ -670,7 +732,7 @@ def run(lang: Language, max_bytes: int = DEFAULT_MAX_BYTES, output_dir: str = No
         f"{summary['total_rows']:>12,} docs | "
         f"{format_tokens(summary['total_tokens_estimated']):>10s} tokens | "
         f"{format_bytes(summary['total_bytes']):>12s} | "
-        f"{'target met' if summary['target_reached'] else 'shortfall: ' + format_tokens(summary['shortfall_bytes'])}"
+        f"{'target met' if summary['target_reached'] else 'shortfall: ' + format_tokens(summary.get('shortfall_tokens', 0)) + ' tokens'}"
     )
     logging.info("=" * 70)
 
@@ -689,8 +751,10 @@ def main():
     from src import languages
     parser = argparse.ArgumentParser(description="Download one language's curated corpus from HuggingFace Hub.")
     languages.add_language_arg(parser)
-    parser.add_argument("--max-bytes", type=int, default=DEFAULT_MAX_BYTES,
-                        help="Byte target for this language.")
+    parser.add_argument("--max-tokens", type=int, default=DEFAULT_MAX_TOKENS,
+                        help=f"Token target for curated data (default: {format_tokens(DEFAULT_MAX_TOKENS)} = 900M tokens).")
+    parser.add_argument("--max-bytes", type=int, default=None,
+                        help="Optional byte target override.")
     parser.add_argument("--output-dir", default=None,
                         help="Override <language>/data/raw.")
     parser.add_argument("--env-file", default=None, help="Path to .env holding HF_TOKEN.")
@@ -704,6 +768,7 @@ def main():
 
     run(
         languages.get(args.lang),
+        max_tokens=args.max_tokens,
         max_bytes=args.max_bytes,
         output_dir=args.output_dir,
         env_file=args.env_file,
