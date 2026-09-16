@@ -71,9 +71,7 @@ independent — separate corpora, tokenizers, vocabularies, weights, training ru
 ## Results
 
 Full write-up with analysis, plots and heatmaps:
-**[report/phase3_report.tex](report/phase3_report.tex)** (consolidated final report, LaTeX) ·
-**[report/phase2_report.md](report/phase2_report.md)** ·
-**[report/phase1_report.md](report/phase1_report.md)**
+**[report/report.md](report/report.md)**
 
 Both models: 6 layers, d_model 512, 8 heads, 512-token context, ~24.36M
 parameters, 25,000 optimizer steps (~3.28B training tokens each).
@@ -94,9 +92,9 @@ parameters, 25,000 optimizer steps (~3.28B training tokens each).
 **Headline finding:** Model H wins on perplexity, Model L wins on
 bits-per-byte — the Nepali tokenizer packs more bytes per token (11.90 vs
 9.70), which inflates its perplexity without meaning it predicts worse per
-byte. See §9 of the Phase 2 report.
+byte. See the comprehensive analysis in [report/report.md](report/report.md).
 
-### Phase 3 — reasoning finetuning results
+### Reasoning finetuning results
 
 | Metric | Model H (Hindi) | Model L (Nepali) |
 |---|---|---|
@@ -113,7 +111,7 @@ Finetuning taught both models the question/reasoning/answer format (0% → 80–
 format adherence) and genuine comparative reasoning (16% EM on held-out entities
 and phrasings). Accuracy drops with reasoning depth (30% → 8% from 1-hop to
 3-hop), and attention becomes more focused and longer-range after finetuning.
-Full analysis in the [Phase 3 report](report/phase3_report.tex).
+Full analysis in the [consolidated technical report](report/report.md).
 
 Causal masking is verified empirically for both models — altering a future
 token changes the logits at the current position by exactly 0.0

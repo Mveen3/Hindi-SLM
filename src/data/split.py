@@ -10,7 +10,7 @@ whole corpus never has to be held in memory and the assignment is identical on
 every re-run for a given seed.
 
 This stage writes ``report/<language>/corpus_stats.json`` — machine-readable
-numbers only. The prose that cites them lives in ``report/phase1_report.md``
+numbers only. The prose that cites them lives in ``report/report.md``
 and is never overwritten by a script.
 
 Invoked through ``python main.py split --lang {hindi,nepali}``.
