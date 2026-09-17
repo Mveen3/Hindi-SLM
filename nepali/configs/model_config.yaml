@@ -8,7 +8,7 @@
 # ============================================================
 
 # Vocabulary (from Phase 1 BPE tokenizer — do NOT change)
-vocab_size: 10121
+vocab_size: 10000
 
 # Architecture
 d_model: 512
