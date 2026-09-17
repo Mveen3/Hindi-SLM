@@ -221,7 +221,7 @@ LANGUAGES = {
         display="Hindi",
         model_label="Model H",
         tier="higher-resource",
-        hf_repo="mveen3/src-hindi-checkpoints",
+        hf_repo="mveen3/hindi_slm",
         tokenizer_probe="नमस्ते दुनिया",
         attention_samples=(
             "भारत एक विविधताओं से भरा देश है जहाँ अनेक भाषाएँ बोली जाती हैं",
@@ -234,7 +234,7 @@ LANGUAGES = {
         display="Nepali",
         model_label="Model L",
         tier="lower-resource",
-        hf_repo="mveen3/src-nepali-checkpoints",
+        hf_repo="mveen3/hindi_slm",
         tokenizer_probe="नमस्कार संसार",
         attention_samples=(
             "नेपाल एक सुन्दर हिमाली देश हो जहाँ विभिन्न जातजाति बसोबास गर्छन्",

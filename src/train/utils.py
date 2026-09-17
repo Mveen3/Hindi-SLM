@@ -315,7 +315,7 @@ def resolve_checkpoint(lang, explicit: str = None) -> str:
     if not found:
         raise SystemExit(
             f"No checkpoint in {lang.checkpoint_dir}. "
-            f"Run: python main.py hub --lang {lang.key}"
+            f"Run: python main.py hub --lang {lang.key} --stage pretraining"
         )
     return found
 

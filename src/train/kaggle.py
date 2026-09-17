@@ -19,7 +19,7 @@ run continues exactly where the last one stopped.
 Setup on Kaggle:
     1. Add ``HF_TOKEN`` as a Kaggle Secret.
     2. Enable the T4 x2 accelerator.
-    3. Run ``notebooks/kaggle_runner.ipynb``.
+    3. Run ``src/kaggle_runner.ipynb``.
 
 Invoked through ``python main.py train-kaggle --lang {hindi,nepali}``.
 """
@@ -104,11 +104,24 @@ class HubSync:
             from huggingface_hub import login
             login(token=token.strip())
             self.api = HfApi()
-            username = self.api.whoami()["name"]
-            self.repo_id = f"{username}/src-{lang.key}-checkpoints"
+            self.repo_id = self.lang.hf_repo
             self.api.create_repo(repo_id=self.repo_id, repo_type="model",
-                                 exist_ok=True, private=True)
+                                 exist_ok=True)
             logger.info("HuggingFace repo ready: %s", self.repo_id)
+
+            # Ensure subfolder exists in the repository
+            self.subfolder = f"{self.lang.key}/pretraining"
+            try:
+                files = self.api.list_repo_files(repo_id=self.repo_id)
+                if not any(f.startswith(f"{self.subfolder}/") for f in files):
+                    self.api.upload_file(
+                        path_or_fileobj=b"",
+                        path_in_repo=f"{self.subfolder}/.gitkeep",
+                        repo_id=self.repo_id,
+                        commit_message=f"Initialize {self.subfolder} subfolder",
+                    )
+            except Exception as exc:
+                logger.debug("Subfolder check note: %s", exc)
         except Exception as exc:
             logger.warning("HuggingFace setup failed (%s) — continuing without sync.", exc)
             self.repo_id = None
@@ -118,24 +131,25 @@ class HubSync:
         return self.repo_id is not None
 
     def upload_checkpoint(self, checkpoint_path: str, step: int):
-        """Upload one checkpoint plus the latest-checkpoint pointer."""
+        """Upload one checkpoint plus the latest-checkpoint pointer to <lang>/pretraining/."""
         if not self.enabled:
             return
         try:
             filename = Path(checkpoint_path).name
+            subfolder = getattr(self, "subfolder", f"{self.lang.key}/pretraining")
             self.api.upload_file(
                 path_or_fileobj=checkpoint_path,
-                path_in_repo=f"{self.lang.key}/{filename}",
+                path_in_repo=f"{subfolder}/{filename}",
                 repo_id=self.repo_id,
                 commit_message=f"{self.lang.display} checkpoint at step {step}",
             )
-            logger.info("Uploaded %s to the Hub", filename)
+            logger.info("Uploaded %s to %s/%s", filename, self.repo_id, subfolder)
 
             pointer = self.lang.checkpoint_dir / "latest_checkpoint.txt"
             if pointer.exists():
                 self.api.upload_file(
                     path_or_fileobj=str(pointer),
-                    path_in_repo=f"{self.lang.key}/latest_checkpoint.txt",
+                    path_in_repo=f"{subfolder}/latest_checkpoint.txt",
                     repo_id=self.repo_id,
                     commit_message=f"Update latest pointer to step {step}",
                 )
@@ -147,21 +161,22 @@ class HubSync:
         if not self.enabled:
             return
         try:
+            subfolder = getattr(self, "subfolder", f"{self.lang.key}/pretraining")
             for name in ("train_loss.json", "val_loss.json"):
                 path = self.lang.log_dir / name
                 if path.exists():
                     self.api.upload_file(
                         path_or_fileobj=str(path),
-                        path_in_repo=f"{self.lang.key}/logs/{name}",
+                        path_in_repo=f"{subfolder}/logs/{name}",
                         repo_id=self.repo_id,
-                        commit_message="Update training logs",
+                        commit_message=f"Update {self.lang.display} training logs",
                     )
-            logger.info("Uploaded training logs to the Hub")
+            logger.info("Uploaded training logs to %s/%s", self.repo_id, subfolder)
         except Exception as exc:
             logger.warning("Log upload failed: %s", exc)
 
     def download_latest_checkpoint(self):
-        """Fetch the highest-step checkpoint from the Hub, or None."""
+        """Fetch the highest-step checkpoint from the Hub (<lang>/pretraining/), or None."""
         if not self.enabled:
             return None
         try:
@@ -170,14 +185,20 @@ class HubSync:
             logger.info("No existing Hub repo contents — starting fresh.")
             return None
 
-        pattern = re.compile(rf"{self.lang.key}/checkpoint_step_(\d+)\.pt")
+        subfolder = getattr(self, "subfolder", f"{self.lang.key}/pretraining")
+        pattern = re.compile(rf"{subfolder}/checkpoint_step_(\d+)\.pt")
         steps = [(int(m.group(1)), f) for f in files if (m := pattern.fullmatch(f))]
         if not steps:
-            logger.info("No checkpoints on the Hub for %s.", self.lang.key)
+            # Fallback patterns: pretraing or legacy root
+            fallback_pattern = re.compile(rf"{self.lang.key}/(?:pretraing/)?checkpoint_step_(\d+)\.pt")
+            steps = [(int(m.group(1)), f) for f in files if (m := fallback_pattern.fullmatch(f))]
+
+        if not steps:
+            logger.info("No checkpoints on the Hub for %s in %s.", self.lang.key, subfolder)
             return None
 
         latest_step, latest_file = max(steps)
-        logger.info("Found Hub checkpoint: step %d", latest_step)
+        logger.info("Found Hub checkpoint: step %d (%s)", latest_step, latest_file)
 
         try:
             cached = hf_hub_download(repo_id=self.repo_id, filename=latest_file)
@@ -187,7 +208,7 @@ class HubSync:
             (self.lang.checkpoint_dir / "latest_checkpoint.txt").write_text(str(target))
 
             for name in ("train_loss.json", "val_loss.json"):
-                remote = f"{self.lang.key}/logs/{name}"
+                remote = f"{subfolder}/logs/{name}"
                 if remote in files:
                     try:
                         log_cached = hf_hub_download(repo_id=self.repo_id, filename=remote)

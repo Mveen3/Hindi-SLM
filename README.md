@@ -432,11 +432,18 @@ language) are in the same Drive folder; the phrase banks, qualitative samples
 and dataset statistics that make them reproducible are committed in the repo.
 
 
-Also mirrored on the HuggingFace Hub, which the resume logic uses directly:
+Also mirrored on the HuggingFace Hub ([mveen3/hindi_slm](https://huggingface.co/mveen3/hindi_slm)), organized into subfolders:
+- `hindi/pretraining/` & `hindi/finetuning/`
+- `nepali/pretraining/` & `nepali/finetuning/`
 
 ```bash
-python main.py hub --lang hindi     # mveen3/src-hindi-checkpoints
-python main.py hub --lang nepali    # mveen3/src-nepali-checkpoints
+# Pull pretrained checkpoints:
+python main.py hub --lang hindi --stage pretraining
+python main.py hub --lang nepali --stage pretraining
+
+# Pull finetuned reasoning checkpoints:
+python main.py hub --lang hindi --stage finetuning
+python main.py hub --lang nepali --stage finetuning
 ```
 
 Training logs and loss curves are committed in the repo, not external:

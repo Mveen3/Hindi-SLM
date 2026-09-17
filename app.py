@@ -167,9 +167,9 @@ def load_language(lang: str, variant: str, device: torch.device) -> dict:
     ckpt_path = find_checkpoint(lang, variant)
     if ckpt_path is None:
         directory = checkpoint_dir_for(language, variant).relative_to(PROJECT_ROOT)
-        hint = (f"Run: python main.py finetune --lang {lang}"
+        hint = (f"Run: python main.py hub --lang {lang} --stage finetuning (or python main.py finetune --lang {lang})"
                 if variant == "finetuned"
-                else f"Run: python main.py hub --lang {lang}")
+                else f"Run: python main.py hub --lang {lang} --stage pretraining")
         raise HTTPException(
             status_code=404,
             detail=f"No {variant} checkpoint found in {directory}/. {hint}",
