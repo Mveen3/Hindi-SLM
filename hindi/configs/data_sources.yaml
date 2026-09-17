@@ -12,15 +12,14 @@ huggingface_sources:
   priority: 1
   description: Sangraha verified Hindi — highest quality curated data
   requires_token: false
-- name: indiccorpv2_hin
-  dataset_id: ai4bharat/IndicCorpV2
-  config: indiccorp_v2
-  data_dir: data/hin_Deva
+- name: fineweb2_hin
+  dataset_id: HuggingFaceFW/fineweb-2
+  config: hin_Deva
   split: train
   text_field: text
   priority: 2
-  description: IndicCorp V2 Hindi — ACL 2023, large monolingual corpus
-  requires_token: false
+  description: FineWeb-2 Hindi — latest high-quality web crawl
+  requires_token: true
 - name: sangraha_unverified_hin
   dataset_id: ai4bharat/sangraha
   config: unverified
@@ -29,14 +28,15 @@ huggingface_sources:
   priority: 3
   description: Sangraha unverified Hindi — web-crawled, less cleaned
   requires_token: false
-- name: fineweb2_hin
-  dataset_id: HuggingFaceFW/fineweb-2
-  config: hin_Deva
+- name: indiccorpv2_hin
+  dataset_id: ai4bharat/IndicCorpV2
+  config: indiccorp_v2
+  data_dir: data/hin_Deva
   split: train
   text_field: text
-  priority: 4
-  description: FineWeb-2 Hindi — latest high-quality web crawl
-  requires_token: true
+  priority: 6
+  description: IndicCorp V2 Hindi — ACL 2023, large monolingual corpus
+  requires_token: false
 - name: sangraha_synthetic_hin
   dataset_id: ai4bharat/sangraha
   config: synthetic

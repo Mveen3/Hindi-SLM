@@ -18,13 +18,15 @@ still cleaned in separate runs into separate files and never merged.
 Invoked through ``python main.py clean --lang {hindi,nepali}``.
 """
 
+import gc
+import hashlib
 import json
 import re
 import string
 import unicodedata
 import multiprocessing as mp
 
-from datasketch import MinHash, MinHashLSH
+from datasketch import MinHash
 
 from src.languages import Language
 
@@ -34,6 +36,11 @@ MIN_DEVANAGARI_RATIO = 0.95
 MAX_PUNCTUATION_RATIO = 0.20
 MIN_WORD_COUNT = 10
 MAX_WORD_LENGTH = 30
+
+# LSH parameters matching threshold=0.55, num_perm=100 (b=16 bands, r=6 rows)
+LSH_B = 16
+LSH_R = 6
+LSH_HASH_RANGES = [(i * LSH_R, (i + 1) * LSH_R) for i in range(LSH_B)]
 
 # Regex patterns
 RE_MULTIPLE_SPACES = re.compile(r'[ \t]+')
@@ -129,7 +136,14 @@ def process_chunk(lines: list) -> tuple:
         for i in range(len(words) - 2):
             shingle = " ".join(words[i:i+3]).encode('utf-8')
             m.update(shingle)
-        results.append((text, m))
+
+        # Extract band digests (8 bytes per band) for compact IPC and memory safety
+        hs = m.hashvalues
+        band_hashes = [
+            hashlib.blake2b(hs[start:end].tobytes(), digest_size=8).digest()
+            for start, end in LSH_HASH_RANGES
+        ]
+        results.append((text, band_hashes))
         
     return results, docs_read, bytes_read, dropped_short, dropped_ratio, dropped_noise, dropped_word_length
 
@@ -148,8 +162,8 @@ def process_language(lang: Language) -> dict:
     curated_dir = lang.raw_dir / "curated"
     out_file = lang.interim_file
     
-    lsh = MinHashLSH(threshold=0.55, num_perm=100)
-    doc_id_counter = 0
+    # 16 compact sets of 8-byte band hashes for near-deduplication (replaces heavy MinHashLSH)
+    band_tables = [set() for _ in range(LSH_B)]
     
     stats = {
         "files_read": 0,
@@ -175,9 +189,9 @@ def process_language(lang: Language) -> dict:
     stats["files_read"] = len(files)
     out_file.parent.mkdir(parents=True, exist_ok=True)
     
-    # Use 10 CPU cores for worker processes (leaving 2 for main/OS)
-    num_workers = max(1, mp.cpu_count() - 2)
-    chunk_size = 8000
+    # Use at most 4 worker processes to prevent high RAM usage and keep system cool
+    num_workers = min(4, max(1, mp.cpu_count() - 2))
+    chunk_size = 2000
     
     with open(out_file, 'w', encoding='utf-8') as f_out:
         with mp.Pool(processes=num_workers) as pool:
@@ -204,14 +218,19 @@ def process_language(lang: Language) -> dict:
                     stats["dropped_noise"] += d_noise
                     stats["dropped_word_length"] += d_wlen
                     
-                    for text, m in res:
-                        if len(lsh.query(m)) > 0:
+                    for text, band_hashes in res:
+                        # Near-deduplication check: collision in any band
+                        is_dup = False
+                        for i, bh in enumerate(band_hashes):
+                            if bh in band_tables[i]:
+                                is_dup = True
+                                break
+                        if is_dup:
                             stats["dropped_dup"] += 1
                             continue
                         
-                        doc_id = f"doc_{doc_id_counter}"
-                        doc_id_counter += 1
-                        lsh.insert(doc_id, m)
+                        for i, bh in enumerate(band_hashes):
+                            band_tables[i].add(bh)
                         
                         out_record = {"text": text}
                         out_line = json.dumps(out_record, ensure_ascii=False) + "\n"
@@ -219,6 +238,9 @@ def process_language(lang: Language) -> dict:
                         
                         stats["docs_written"] += 1
                         stats["bytes_written"] += len(out_line.encode('utf-8'))
+
+                # Free heap between large shards
+                gc.collect()
                         
     return stats
 

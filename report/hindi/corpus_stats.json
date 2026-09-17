@@ -1,0 +1,23 @@
+{
+  "language": "hindi",
+  "model": "Model H",
+  "seed": 42,
+  "split_ratios": {
+    "train": 0.95,
+    "val": 0.025,
+    "test": 0.025
+  },
+  "documents": {
+    "train": 1661460,
+    "val": 43718,
+    "test": 43543
+  },
+  "bytes": {
+    "train": 10435311705,
+    "val": 276085906,
+    "test": 274341180
+  },
+  "total_documents": 1748721,
+  "total_bytes": 10985738791,
+  "total_mb": 10476.82
+}

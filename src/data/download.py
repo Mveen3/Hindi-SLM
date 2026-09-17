@@ -340,7 +340,6 @@ def download_source(
     if dry_run:
         logging.info(f"     [DRY RUN] Would download from {dataset_id}")
         return {"name": name, "status": "dry_run", "tokens": existing_tokens, "rows": existing_rows, "bytes": existing_bytes}
-        return {"name": name, "status": "dry_run", "tokens": existing_tokens, "rows": existing_rows, "bytes": existing_bytes}
 
     stats = {
         "name": name,
@@ -474,10 +473,15 @@ def download_source(
 
             pbar.close()
 
-        # Cleanup streaming iterator and dataset
-        del dataset_iter
-        del dataset
-        gc.collect()
+        # Safely release streaming iterator and dataset references
+        try:
+            del dataset_iter
+        except Exception:
+            pass
+        try:
+            del dataset
+        except Exception:
+            pass
 
         stats["tokens"] = source_tokens
         stats["rows"] = source_rows
@@ -777,6 +781,9 @@ def main():
         skip_sources=args.skip_sources,
         verbose=args.verbose,
     )
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)
 
 
 if __name__ == "__main__":

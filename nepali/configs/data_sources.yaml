@@ -12,14 +12,14 @@ huggingface_sources:
   priority: 1
   description: Sangraha verified Nepali — highest quality curated data
   requires_token: false
-- name: nepali_text_corpus
-  dataset_id: IRIIS-RESEARCH/Nepali-Text-Corpus
-  config: null
+- name: fineweb2_nep
+  dataset_id: HuggingFaceFW/fineweb-2
+  config: npi_Deva
   split: train
-  text_field: Article
+  text_field: text
   priority: 2
-  description: IRIIS Nepali Text Corpus — 27.5 GB from 99 news websites (LARGEST)
-  requires_token: false
+  description: FineWeb-2 Nepali — latest high-quality web crawl
+  requires_token: true
 - name: indiccorpv2_nep
   dataset_id: ai4bharat/IndicCorpV2
   config: indiccorp_v2
@@ -45,14 +45,14 @@ huggingface_sources:
   priority: 5
   description: Boredoom17 Nepali Corpus — 7.1M rows from news, wiki, YouTube
   requires_token: false
-- name: fineweb2_nep
-  dataset_id: HuggingFaceFW/fineweb-2
-  config: npi_Deva
+- name: nepali_text_corpus
+  dataset_id: IRIIS-RESEARCH/Nepali-Text-Corpus
+  config: null
   split: train
-  text_field: text
+  text_field: Article
   priority: 6
-  description: FineWeb-2 Nepali — latest high-quality web crawl
-  requires_token: true
+  description: IRIIS Nepali Text Corpus — 27.5 GB from 99 news websites (LARGEST)
+  requires_token: false
 - name: sangraha_synthetic_nep
   dataset_id: ai4bharat/sangraha
   config: synthetic
