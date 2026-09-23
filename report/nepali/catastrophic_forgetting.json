@@ -1,0 +1,10 @@
+{
+  "pretrained_val_ppl": 26.25,
+  "finetuned_val_ppl": 50.0,
+  "pretrained_val_bpb": 0.401,
+  "finetuned_val_bpb": 0.4801,
+  "delta_ppl": 23.75,
+  "delta_bpb": 0.0791,
+  "retention_percent": 52.5,
+  "verdict": "Catastrophic Forgetting"
+}

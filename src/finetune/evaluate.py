@@ -37,15 +37,26 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
+from pathlib import Path
 
 import torch
 from tokenizers import Tokenizer
+from torch.utils.data import DataLoader
 
 from src.languages import Language
 from src.model.transformer import build_model_from_config
+from src.data.dataset import EvalLMDataset
+from src.train.utils import find_latest_checkpoint
+from src.finetune.lora import (
+    apply_lora,
+    is_lora_checkpoint,
+    load_lora_checkpoint,
+    merge_lora_weights,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +94,39 @@ def extract_answer(generated: str, answer_label: str) -> tuple[str, bool]:
         # The answer is the remainder of that line.
         return normalise_answer(tail.split("\n", 1)[0]), True
     return normalise_answer(generated.split("\n", 1)[0]), False
+
+
+def classify_error(pred: dict) -> str:
+    """Classify reasoning prediction failure into an informative taxonomy category.
+
+    Taxonomy:
+        - "format_error": Did not emit the required answer label.
+        - "hallucination_error": Emitted an entity name absent from the prompt.
+        - "calculation_error": Mathematical arithmetic mismatch in numerical tasks.
+        - "reasoning_step_error": Step-by-step logic inversion or contradiction.
+        - "conclusion_error": Reasoning appeared plausible, but final selected entity was incorrect.
+    """
+    if not pred.get("format_ok", False):
+        return "format_error"
+
+    predicted = pred["predicted"]
+    prompt = pred["prompt"]
+
+    # Check if predicted is a hallucinated entity name (not in prompt)
+    is_numeric = any(c.isdigit() for c in predicted)
+    standard_answers = {"हाँ", "हो", "होइन", "नही", "नहीं", "बराबर"}
+    if not is_numeric and len(predicted) > 1 and predicted not in prompt and predicted not in standard_answers:
+        return "hallucination_error"
+
+    task = pred["task"]
+    if "calc" in task or "age" in task or "distance" in task or is_numeric:
+        return "calculation_error"
+
+    generated = pred.get("generated", "")
+    if any(k in generated for k in ("तर्क", "कारण", "भन्दा", "से")):
+        return "reasoning_step_error"
+
+    return "conclusion_error"
 
 
 # ---------------------------------------------------------------------------
@@ -135,17 +179,125 @@ def generate_batch(model, input_ids: torch.Tensor, max_new_tokens: int,
 
 
 def load_model(lang: Language, checkpoint_path: str, device):
-    """Load a checkpoint into a model built from its own stored config."""
-    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    """Load a checkpoint into a model built from its own stored config.
+
+    Seamlessly supports standard checkpoints, compact LoRA adapters, and merged LoRA weights.
+    """
+    path = Path(checkpoint_path)
+    checkpoint = torch.load(path, map_location="cpu", weights_only=False)
     config = checkpoint["config"]
     model = build_model_from_config(config)
-    model.load_state_dict(checkpoint["model_state_dict"])
+
+    # Check if this is a compact LoRA adapter checkpoint
+    if is_lora_checkpoint(path):
+        # 1. Resolve base pretrained weights
+        pretrained_path = config.get("pretrained_checkpoint")
+        if not pretrained_path or not Path(pretrained_path).exists():
+            pretrained_path = find_latest_checkpoint(str(lang.checkpoint_dir))
+        if not pretrained_path or not Path(pretrained_path).exists():
+            raise FileNotFoundError(f"Base pretrained checkpoint not found for LoRA adapter: {pretrained_path}")
+
+        base_ckpt = torch.load(pretrained_path, map_location="cpu", weights_only=False)
+        model.load_state_dict(base_ckpt["model_state_dict"])
+
+        # 2. Apply LoRA adapter
+        lora_rank = int(config.get("lora_rank", 8))
+        lora_alpha = float(config.get("lora_alpha", 16.0))
+        lora_target = tuple(config.get("lora_target_modules", ("W_q", "W_v")))
+        apply_lora(model, rank=lora_rank, alpha=lora_alpha, target_modules=lora_target)
+
+        # 3. Load adapter weights
+        load_lora_checkpoint(model, path)
+
+        # 4. In-place merge weights for optimal zero-overhead inference
+        merge_lora_weights(model)
+        logger.info("Loaded and merged LoRA adapter from %s into base model for evaluation.", path)
+    else:
+        model.load_state_dict(checkpoint["model_state_dict"])
+        logger.info("Loaded full model weights from %s.", path)
+
     model = model.to(device).eval()
     step = checkpoint.get("step", "?")
     del checkpoint
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     return model, config, step
+
+
+@torch.no_grad()
+def evaluate_catastrophic_forgetting(
+    lang: Language,
+    checkpoint_path: str,
+    device,
+    max_batches: int = 40,
+) -> dict:
+    """Evaluate pretraining validation loss and perplexity on held-out language corpus.
+
+    Measures whether task-specific finetuning preserved general linguistic knowledge
+    or suffered Catastrophic Forgetting.
+    """
+    val_file = lang.split_file("val")
+    if not val_file.exists():
+        logger.warning("Pretraining val file %s not found. Skipping forgetting test.", val_file)
+        return {"val_loss": 0.0, "val_ppl": 0.0, "val_bpb": 0.0, "evaluated_tokens": 0}
+
+    model, config, step = load_model(lang, checkpoint_path, device)
+    model.eval()
+
+    dataset = EvalLMDataset(
+        data_path=str(val_file),
+        tokenizer_path=str(lang.tokenizer_path),
+        max_seq_len=config.get("max_seq_len", 512),
+        pad_token_id=config.get("pad_token_id", 0),
+        eos_token_id=config.get("eos_token_id", 3),
+    )
+    dataloader = DataLoader(dataset, batch_size=16, num_workers=0, pin_memory=True)
+
+    pad_id = config.get("pad_token_id", 0)
+    total_loss_nats = 0.0
+    total_tokens = 0
+    total_bytes = 0
+
+    for i, batch in enumerate(dataloader):
+        if max_batches is not None and i >= max_batches:
+            break
+        input_ids = batch["input_ids"].to(device)
+        targets = batch["targets"].to(device)
+        num_tokens_batch = batch["num_tokens"]
+        num_bytes_batch = batch["num_bytes"]
+
+        with torch.amp.autocast("cuda", enabled=device.type == "cuda"):
+            logits, _ = model(input_ids)
+
+        B, T, V = logits.shape
+        logits_2d = logits.reshape(-1, V)
+        targets_1d = targets.reshape(-1)
+
+        loss_flat = torch.nn.functional.cross_entropy(
+            logits_2d.float(), targets_1d, ignore_index=pad_id, reduction="none"
+        ).reshape(B, T)
+
+        mask = targets != pad_id
+        per_sample_loss = (loss_flat * mask).sum(dim=1)
+
+        total_loss_nats += float(per_sample_loss.sum().item())
+        total_tokens += int(num_tokens_batch.sum().item()) if isinstance(num_tokens_batch, torch.Tensor) else sum(num_tokens_batch)
+        total_bytes += int(num_bytes_batch.sum().item()) if isinstance(num_bytes_batch, torch.Tensor) else sum(num_bytes_batch)
+
+    ce_loss = float(total_loss_nats / total_tokens) if total_tokens else 0.0
+    ppl = float(math.exp(min(ce_loss, 20.0)))
+    bpb = float(total_loss_nats / (total_bytes * math.log(2.0))) if total_bytes else 0.0
+
+    del model
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    return {
+        "val_loss": round(ce_loss, 4),
+        "val_ppl": round(ppl, 2),
+        "val_bpb": round(bpb, 4),
+        "evaluated_tokens": int(total_tokens),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -205,18 +357,21 @@ def evaluate_checkpoint(lang: Language, checkpoint_path: str, records: list,
                 text = tokenizer.decode(token_ids)
                 answer, format_ok = extract_answer(text, answer_label)
                 gold = normalise_answer(record["answer"])
-                predictions.append({
+                is_correct = (answer == gold)
+                entry = {
                     "id": record.get("id", ""),
                     "task": record["task"],
                     "hops": record.get("hops", 0),
                     "prompt": record["prompt"],
                     "gold": gold,
                     "predicted": answer,
-                    "correct": answer == gold,
+                    "correct": is_correct,
                     "format_ok": format_ok,
                     "answer_in_text": gold in text,
                     "generated": text[:400],
-                })
+                }
+                entry["error_type"] = None if is_correct else classify_error(entry)
+                predictions.append(entry)
 
             done += len(chunk)
             if done % (batch_size * 20) < batch_size:
@@ -234,6 +389,8 @@ def evaluate_checkpoint(lang: Language, checkpoint_path: str, records: list,
         per_task[p["task"]]["correct"] += int(p["correct"])
         per_hops[str(p["hops"])]["n"] += 1
         per_hops[str(p["hops"])]["correct"] += int(p["correct"])
+
+    error_taxonomy = dict(Counter(p["error_type"] for p in predictions if not p["correct"]))
 
     def with_accuracy(table: dict) -> dict:
         return {
@@ -256,6 +413,7 @@ def evaluate_checkpoint(lang: Language, checkpoint_path: str, records: list,
             sum(p["answer_in_text"] for p in predictions) / n, 4) if n else 0.0,
         "by_task": with_accuracy(per_task),
         "by_hops": with_accuracy(per_hops),
+        "error_taxonomy": error_taxonomy,
         "decode_seconds": round(time.time() - start, 1),
         "predictions": predictions,
     }
@@ -263,6 +421,8 @@ def evaluate_checkpoint(lang: Language, checkpoint_path: str, records: list,
     logger.info("[%s] %s exact match: %.2f%% (%d/%d) | format ok: %.1f%%",
                 lang.display, arm, 100 * results["exact_match"], correct, n,
                 100 * results["format_ok_rate"])
+    if error_taxonomy:
+        logger.info("[%s] Error Taxonomy breakdown: %s", arm, json.dumps(error_taxonomy))
     del model
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -357,6 +517,34 @@ def write_comparison_table(lang: Language, pretrained: dict, finetuned: dict) ->
         lines.append(f"| {hops} | {stats['n']} | {100 * pre:.1f}% "
                      f"| {100 * stats['accuracy']:.1f}% |")
 
+    if finetuned.get("error_taxonomy"):
+        lines += [
+            "",
+            "## Error Taxonomy (Failure Mode Distribution)",
+            "",
+            "| Error Category | Failure Count | Share of Errors |",
+            "|---|---:|---:|",
+        ]
+        total_err = sum(finetuned["error_taxonomy"].values())
+        for err_type, count in sorted(finetuned["error_taxonomy"].items(), key=lambda x: -x[1]):
+            pct = (count / total_err * 100) if total_err else 0
+            lines.append(f"| `{err_type}` | {count} | {pct:.1f}% |")
+
+    forgetting = finetuned.get("catastrophic_forgetting") or {}
+    if forgetting:
+        lines += [
+            "",
+            "## General Language Retention (Catastrophic Forgetting Benchmark)",
+            "",
+            "Evaluated on held-out general language pretraining validation set (`val.jsonl`):",
+            "",
+            "| Metric | Pretrained Model | Finetuned Model | Delta / Retention |",
+            "|---|---:|---:|---:|",
+            f"| Perplexity (PPL) | {forgetting.get('pretrained_val_ppl', '-')} | {forgetting.get('finetuned_val_ppl', '-')} | {forgetting.get('delta_ppl', 0):+.2f} PPL |",
+            f"| Bits-Per-Byte (BPB) | {forgetting.get('pretrained_val_bpb', '-')} | {forgetting.get('finetuned_val_bpb', '-')} | {forgetting.get('delta_bpb', 0):+.4f} BPB |",
+            f"| Knowledge Retention Rate | 100.0% | {forgetting.get('retention_percent', '-')}% | **{forgetting.get('verdict', 'N/A')}** |",
+        ]
+
     lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
     return str(path)
@@ -365,8 +553,10 @@ def write_comparison_table(lang: Language, pretrained: dict, finetuned: dict) ->
 def run_reasoning_eval(lang: Language, pretrained_checkpoint: str,
                        finetuned_checkpoint: str, limit: int | None = None,
                        batch_size: int = 16, max_new_tokens: int = 160,
-                       skip_pretrained: bool = False) -> dict:
-    """Score both arms on the reasoning test split and write the report files.
+                       skip_pretrained: bool = False,
+                       skip_forgetting: bool = False,
+                       forgetting_batches: int = 30) -> dict:
+    """Score both arms on the reasoning test split, run forgetting benchmark, and write reports.
 
     Args:
         lang:                  Language to evaluate.
@@ -376,21 +566,19 @@ def run_reasoning_eval(lang: Language, pretrained_checkpoint: str,
         batch_size:            Prompts decoded at once.
         max_new_tokens:        Generation cap per example.
         skip_pretrained:       Reuse a cached baseline instead of re-decoding it.
+        skip_forgetting:       Skip running the general language retention benchmark.
+        forgetting_batches:    Batches to process for the forgetting benchmark.
 
     Returns:
-        A summary dict, also written to
-        ``report/<language>/reasoning_metrics.json``.
-
-    Raises:
-        SystemExit: If the reasoning test split has not been generated.
+        A summary dict, also written to ``report/<language>/reasoning_metrics.json``.
     """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     test_path = lang.reasoning_split_file("test")
     if not test_path.exists():
         raise SystemExit(
             f"{test_path} not found — run "
             f"python main.py reasoning-data --lang {lang.key} first."
         )
-
 
     records = []
     with open(test_path, encoding="utf-8") as f:
@@ -417,6 +605,36 @@ def run_reasoning_eval(lang: Language, pretrained_checkpoint: str,
     finetuned = evaluate_checkpoint(lang, finetuned_checkpoint, records,
                                     "finetuned", batch_size, max_new_tokens)
 
+    # Catastrophic Forgetting Benchmark
+    forgetting_summary = {}
+    if not skip_forgetting:
+        logger.info("Running Catastrophic Forgetting & Generalization Preservation Benchmark...")
+        pre_forget = evaluate_catastrophic_forgetting(lang, pretrained_checkpoint, device, max_batches=forgetting_batches)
+        fine_forget = evaluate_catastrophic_forgetting(lang, finetuned_checkpoint, device, max_batches=forgetting_batches)
+        if pre_forget.get("val_ppl") and fine_forget.get("val_ppl"):
+            delta_ppl = round(fine_forget["val_ppl"] - pre_forget["val_ppl"], 2)
+            delta_bpb = round(fine_forget["val_bpb"] - pre_forget["val_bpb"], 4)
+            retention_pct = round(min(100.0, (pre_forget["val_ppl"] / max(0.001, fine_forget["val_ppl"])) * 100.0), 2)
+            verdict = "Preserved (LoRA)" if retention_pct >= 90.0 else ("Moderate Drift" if retention_pct >= 75.0 else "Catastrophic Forgetting")
+            forgetting_summary = {
+                "pretrained_val_ppl": pre_forget["val_ppl"],
+                "finetuned_val_ppl": fine_forget["val_ppl"],
+                "pretrained_val_bpb": pre_forget["val_bpb"],
+                "finetuned_val_bpb": fine_forget["val_bpb"],
+                "delta_ppl": delta_ppl,
+                "delta_bpb": delta_bpb,
+                "retention_percent": retention_pct,
+                "verdict": verdict,
+            }
+            logger.info("Catastrophic Forgetting: Pretrained PPL=%.2f, Finetuned PPL=%.2f (Delta: %+.2f, Retention: %.1f%% - %s)",
+                        pre_forget["val_ppl"], fine_forget["val_ppl"], delta_ppl, retention_pct, verdict)
+            forgetting_file = lang.report_dir / "catastrophic_forgetting.json"
+            forgetting_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(forgetting_file, "w", encoding="utf-8") as f:
+                json.dump(forgetting_summary, f, ensure_ascii=False, indent=2)
+
+    finetuned["catastrophic_forgetting"] = forgetting_summary
+
     write_qualitative_examples(lang, finetuned)
     table_path = write_comparison_table(lang, pretrained, finetuned)
 
@@ -427,6 +645,7 @@ def run_reasoning_eval(lang: Language, pretrained_checkpoint: str,
         "test_examples": len(records),
         "pretrained": pretrained,
         "finetuned": finetuned,
+        "catastrophic_forgetting": forgetting_summary,
         "improvement_pp": round(100 * (finetuned["exact_match"] - pretrained["exact_match"]), 2),
     }
 
@@ -448,7 +667,7 @@ def main():
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-    parser = argparse.ArgumentParser(description="Evaluate reasoning finetuning and attention.")
+    parser = argparse.ArgumentParser(description="Evaluate reasoning finetuning, retention, and attention.")
     languages.add_language_arg(parser)
     parser.add_argument("--pretrained", default=None,
                         help="Pretrained checkpoint (default: newest in checkpoints/).")
@@ -464,6 +683,10 @@ def main():
                         help="Generation cap per example (default: %(default)s).")
     parser.add_argument("--skip-pretrained", action="store_true",
                         help="Reuse cached pretrained-baseline scores.")
+    parser.add_argument("--skip-forgetting", action="store_true",
+                        help="Skip general pretraining perplexity retention test.")
+    parser.add_argument("--forgetting-batches", type=int, default=30,
+                        help="Max batches for catastrophic forgetting evaluation (default: 30).")
     parser.add_argument("--prompt", default=None,
                         help="Sentence for attention comparison.")
     args = parser.parse_args()
@@ -489,6 +712,8 @@ def main():
             lang, pretrained, finetuned, limit=args.limit,
             batch_size=args.batch_size, max_new_tokens=args.max_new_tokens,
             skip_pretrained=args.skip_pretrained,
+            skip_forgetting=args.skip_forgetting,
+            forgetting_batches=args.forgetting_batches,
         )
 
     if "attention" in args.only:
@@ -503,6 +728,9 @@ def main():
         print(f"  pretrained         {100 * summary['pretrained']['exact_match']:.2f}% exact match")
         print(f"  finetuned          {100 * summary['finetuned']['exact_match']:.2f}% exact match")
         print(f"  improvement        {summary['improvement_pp']:+.2f} pp")
+        if summary.get("catastrophic_forgetting"):
+            cf = summary["catastrophic_forgetting"]
+            print(f"  retention rate     {cf['retention_percent']}% ({cf['verdict']})")
         print(f"\n  tables -> {lang.report_dir / 'reasoning_results.md'}")
     return 0
 

@@ -1,0 +1,10 @@
+{
+  "pretrained_val_ppl": 27.45,
+  "finetuned_val_ppl": 29.11,
+  "pretrained_val_bpb": 0.4958,
+  "finetuned_val_bpb": 0.5046,
+  "delta_ppl": 1.66,
+  "delta_bpb": 0.0088,
+  "retention_percent": 94.3,
+  "verdict": "Preserved (LoRA)"
+}

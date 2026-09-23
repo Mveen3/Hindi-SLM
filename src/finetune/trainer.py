@@ -46,6 +46,14 @@ from tqdm import tqdm
 from src.languages import Language
 from src.model.transformer import build_model_from_config, count_parameters
 from src.finetune.dataset import create_finetune_dataloader
+from src.finetune.lora import (
+    apply_lora,
+    count_lora_parameters,
+    is_lora_checkpoint,
+    load_lora_checkpoint,
+    merge_lora_weights,
+    save_lora_checkpoint,
+)
 from src.train.utils import (
     AverageMeter,
     find_latest_checkpoint,
@@ -185,9 +193,9 @@ def finetune(lang: Language, config: dict, pretrained_checkpoint: str,
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info("Finetuning %s (%s) on device %s", lang.display, lang.model_label, device)
     if device.type == "cuda":
-        logger.info("GPU: %s | VRAM: %.1f GB",
-                    torch.cuda.get_device_name(0),
-                    torch.cuda.get_device_properties(0).total_memory / 1e9)
+        props = torch.cuda.get_device_properties(0)
+        logger.info("GPU: %s | Total VRAM: %.2f GB", props.name, props.total_memory / 1e9)
+        torch.cuda.empty_cache()
 
     seed = config.get("seed", 42)
     torch.manual_seed(seed)
@@ -197,12 +205,64 @@ def finetune(lang: Language, config: dict, pretrained_checkpoint: str,
     checkpoint_dir = str(lang.finetune_checkpoint_dir)
     log_dir = str(lang.finetune_log_dir)
 
-    # ----- Model -----
-    model = build_model_from_config(config).to(device)
-    param_info = count_parameters(model)
-    logger.info("Model: %s trainable parameters", f"{param_info['trainable']:,}")
+    peft_type = str(config.get("peft_type", "lora")).lower()
+    lora_rank = int(config.get("lora_rank", 8))
+    lora_alpha = float(config.get("lora_alpha", 16.0))
+    lora_dropout = float(config.get("lora_dropout", 0.05))
+    lora_target = tuple(config.get("lora_target_modules", ("W_q", "W_v")))
 
-    # ----- Data (loaded first: the epoch count sets the LR schedule length) -----
+    # Determine resume path if available
+    resume_path = None
+    if config.get("resume_from", "latest") == "latest":
+        resume_path = find_latest_checkpoint(checkpoint_dir)
+    elif config.get("resume_from") and Path(config["resume_from"]).exists():
+        resume_path = config["resume_from"]
+
+    # If starting fresh from pretrained weights, sync architecture from checkpoint
+    if not resume_path:
+        ckpt_meta = torch.load(pretrained_checkpoint, map_location="cpu", weights_only=False)
+        ckpt_cfg = ckpt_meta.get("config", {})
+        # Inherit architecture from the pretrained run (e.g., 32M 8-layer or 6-layer tied)
+        for arch_key in ("vocab_size", "d_model", "n_layers", "n_heads", "d_ff", "max_seq_len", "tie_weights"):
+            if arch_key in ckpt_cfg:
+                config[arch_key] = ckpt_cfg[arch_key]
+
+        # ----- Model Initialization -----
+        model = build_model_from_config(config).to(device)
+        model.load_state_dict(ckpt_meta["model_state_dict"])
+        step = ckpt_meta.get("step", "?")
+        logger.info("Loaded pretrained weights from %s (pretraining step %s, %d layers, d_ff=%d)",
+                    pretrained_checkpoint, step, config.get("n_layers", 6), config.get("d_ff", 2048))
+        del ckpt_meta
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    else:
+        model = build_model_from_config(config).to(device)
+
+    # ----- PEFT / LoRA Application -----
+    if peft_type == "lora":
+        model, lora_stats = apply_lora(
+            model,
+            rank=lora_rank,
+            alpha=lora_alpha,
+            target_modules=lora_target,
+            dropout=lora_dropout,
+        )
+        logger.info(
+            "LoRA PEFT enabled (r=%d, alpha=%.1f): trainable params = %s / %s (%.2f%%)",
+            lora_rank, lora_alpha,
+            f"{lora_stats['trainable']:,}",
+            f"{lora_stats['total']:,}",
+            lora_stats["trainable_percent"],
+        )
+    else:
+        param_info = count_parameters(model)
+        logger.info("Full Fine-Tuning enabled: %s trainable parameters", f"{param_info['trainable']:,}")
+
+    if device.type == "cuda":
+        logger.info("VRAM allocated after model setup: %.1f MB", torch.cuda.memory_allocated() / 1e6)
+
+    # ----- Data -----
     train_loader, train_dataset = create_finetune_dataloader(
         lang, "train", config, shuffle=True, limit=limit)
     val_loader, val_dataset = create_finetune_dataloader(
@@ -219,10 +279,15 @@ def finetune(lang: Language, config: dict, pretrained_checkpoint: str,
     if warmup_steps is None:
         warmup_steps = max(10, int(0.03 * max_steps))
 
-    # ----- Optimizer / scheduler / scaler (fresh — see module docstring) -----
+    # ----- Optimizer / scheduler / scaler -----
+    lr = config.get("learning_rate")
+    if lr is None:
+        lr = 1.0e-4 if peft_type == "lora" else 1.5e-5
+
+    trainable_params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
-        model.parameters(),
-        lr=config["learning_rate"],
+        trainable_params,
+        lr=lr,
         weight_decay=config.get("weight_decay", 0.01),
         betas=tuple(config.get("betas", [0.9, 0.95])),
         eps=config.get("eps", 1e-8),
@@ -231,33 +296,33 @@ def finetune(lang: Language, config: dict, pretrained_checkpoint: str,
     use_amp = config.get("use_amp", True) and torch.cuda.is_available()
     scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
 
-    # ----- Resume, or start from the pretrained weights -----
+    # ----- Resume if checkpoint found -----
     global_step = 0
     loss_history: list = []
     val_loss_history: list = []
 
-    resume_path = None
-    if config.get("resume_from", "latest") == "latest":
-        resume_path = find_latest_checkpoint(checkpoint_dir)
-    elif config.get("resume_from") and Path(config["resume_from"]).exists():
-        resume_path = config["resume_from"]
-
     if resume_path:
-        logger.info("Resuming interrupted finetuning from %s", resume_path)
-        info = load_checkpoint(resume_path, model, optimizer, scheduler, scaler, device=device)
+        logger.info("Resuming finetuning from %s", resume_path)
+        if is_lora_checkpoint(resume_path):
+            info = load_lora_checkpoint(
+                model, resume_path, optimizer=optimizer, scheduler=scheduler,
+                scaler=scaler, device=device,
+            )
+        else:
+            info = load_checkpoint(
+                resume_path, model, optimizer=optimizer, scheduler=scheduler,
+                scaler=scaler, device=device,
+            )
         global_step = info["step"]
         loss_history = info.get("loss_history", [])
         val_loss_history = info.get("val_loss_history", [])
         logger.info("Resumed at finetuning step %d", global_step)
-    else:
-        pretrained_config = load_pretrained_weights(model, pretrained_checkpoint, device)
-        check_architecture_match(config, pretrained_config)
-        logger.info("Starting finetuning from the pretrained checkpoint "
-                    "(fresh optimizer, scheduler and AMP scaler).")
 
-    # Record provenance in the checkpoint config, so a finetuned checkpoint
-    # always says which pretrained run it came from.
+    # Record provenance in the checkpoint config
     config = dict(config)
+    config["peft_type"] = peft_type
+    config["lora_rank"] = lora_rank
+    config["lora_alpha"] = lora_alpha
     config["pretrained_checkpoint"] = str(pretrained_checkpoint)
     config["finetune_max_steps"] = max_steps
     config["finetune_warmup_steps"] = warmup_steps
@@ -335,10 +400,30 @@ def finetune(lang: Language, config: dict, pretrained_checkpoint: str,
                 logger.info("Step %d | Validation loss: %.4f%s", global_step, val_loss, marker)
 
             if global_step % save_interval == 0:
-                save_checkpoint(model=model, optimizer=optimizer, scheduler=scheduler,
-                                scaler=scaler, step=global_step, config=config,
-                                loss_history=loss_history, val_loss_history=val_loss_history,
-                                checkpoint_dir=checkpoint_dir)
+                if peft_type == "lora":
+                    save_lora_checkpoint(
+                        model=model,
+                        checkpoint_path=f"{checkpoint_dir}/checkpoint_step_{global_step}.pt",
+                        config=config,
+                        step=global_step,
+                        optimizer=optimizer,
+                        scheduler=scheduler,
+                        scaler=scaler,
+                        loss_history=loss_history,
+                        val_loss_history=val_loss_history,
+                    )
+                else:
+                    save_checkpoint(
+                        model=model,
+                        optimizer=optimizer,
+                        scheduler=scheduler,
+                        scaler=scaler,
+                        step=global_step,
+                        config=config,
+                        loss_history=loss_history,
+                        val_loss_history=val_loss_history,
+                        checkpoint_dir=checkpoint_dir,
+                    )
 
             if global_step >= max_steps:
                 done = True
@@ -355,9 +440,44 @@ def finetune(lang: Language, config: dict, pretrained_checkpoint: str,
     val_loss_history.append((global_step, final_val))
     logger.info("Final validation loss (full split): %.4f", final_val)
 
-    save_checkpoint(model=model, optimizer=optimizer, scheduler=scheduler, scaler=scaler,
-                    step=global_step, config=config, loss_history=loss_history,
-                    val_loss_history=val_loss_history, checkpoint_dir=checkpoint_dir)
+    if peft_type == "lora":
+        save_lora_checkpoint(
+            model=model,
+            checkpoint_path=f"{checkpoint_dir}/checkpoint_step_{global_step}.pt",
+            config=config,
+            step=global_step,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            scaler=scaler,
+            loss_history=loss_history,
+            val_loss_history=val_loss_history,
+        )
+        if config.get("save_merged", False):
+            import copy
+            merged_model = copy.deepcopy(model)
+            merge_lora_weights(merged_model)
+            merged_file = Path(checkpoint_dir) / f"checkpoint_step_{global_step}_merged.pt"
+            torch.save({
+                "model_state_dict": merged_model.state_dict(),
+                "config": config,
+                "step": global_step,
+                "peft_type": "merged_lora",
+            }, merged_file)
+            del merged_model
+            logger.info("Saved merged deployable weights -> %s", merged_file)
+    else:
+        save_checkpoint(
+            model=model,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            scaler=scaler,
+            step=global_step,
+            config=config,
+            loss_history=loss_history,
+            val_loss_history=val_loss_history,
+            checkpoint_dir=checkpoint_dir,
+        )
+
     save_training_log(loss_history, val_loss_history, log_dir)
 
     elapsed = time.time() - start_time
@@ -378,6 +498,7 @@ def finetune(lang: Language, config: dict, pretrained_checkpoint: str,
         "pretrained_checkpoint": str(pretrained_checkpoint),
         "train_examples": len(train_dataset),
         "effective_batch": config["batch_size"] * grad_accum,
+        "peft_type": peft_type,
     }
 
 
@@ -414,6 +535,12 @@ def main():
     parser.add_argument("--checkpoint", default=None,
                         help="Pretrained checkpoint to start from (default: newest in <language>/checkpoints/).")
     parser.add_argument("--config", default=None, help="Path to a finetune_config.yaml override.")
+    parser.add_argument("--peft", choices=["lora", "full"], default=None,
+                        help="Parameter-efficient finetuning mode: 'lora' or 'full' (default: from config, or 'lora').")
+    parser.add_argument("--lora-rank", type=int, default=None, dest="lora_rank",
+                        help="Rank r for LoRA adapters (default: 8).")
+    parser.add_argument("--lora-alpha", type=float, default=None, dest="lora_alpha",
+                        help="Alpha scaling for LoRA (default: 16.0).")
     parser.add_argument("--epochs", type=int, default=None, help="Override the number of epochs.")
     parser.add_argument("--batch-size", type=int, default=None, dest="batch_size",
                         help="Override the micro-batch size.")
@@ -425,6 +552,10 @@ def main():
                         help="Use only the first N training examples (smoke runs).")
     parser.add_argument("--fresh", action="store_true",
                         help="Ignore existing finetuning checkpoint and restart.")
+    parser.add_argument("--smoke-test", action="store_true",
+                        help="Quick 20-step smoke test for verifying local training and VRAM.")
+    parser.add_argument("--save-merged", action="store_true",
+                        help="Export merged full weights alongside LoRA adapter.")
     args = parser.parse_args()
 
     lang = languages.get(args.lang)
@@ -435,7 +566,22 @@ def main():
         "batch_size": args.batch_size,
         "learning_rate": args.learning_rate,
         "max_steps": args.max_steps,
+        "peft_type": args.peft,
+        "lora_rank": args.lora_rank,
+        "lora_alpha": args.lora_alpha,
+        "save_merged": args.save_merged if args.save_merged else None,
     }
+    if args.smoke_test:
+        overrides.update({
+            "max_steps": 20,
+            "eval_interval": 10,
+            "log_interval": 5,
+            "eval_max_batches": 5,
+            "save_interval": 20,
+        })
+        if args.limit is None:
+            args.limit = 100
+
     if args.fresh:
         overrides["resume_from"] = None
 
@@ -443,7 +589,7 @@ def main():
     print("\n" + "=" * 62)
     print(f" Finetuning summary — {summary['model']} ({summary['language']})")
     print("=" * 62)
-    for key in ("steps", "epochs", "train_examples", "effective_batch",
+    for key in ("peft_type", "steps", "epochs", "train_examples", "effective_batch",
                 "final_train_loss", "final_val_loss", "minutes"):
         print(f"  {key:<18} {summary[key]}")
     print(f"  checkpoints        {summary['checkpoint_dir']}")
