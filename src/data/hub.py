@@ -21,8 +21,12 @@ import re
 import shutil
 import logging
 
+from pathlib import Path
 from dotenv import load_dotenv
 from huggingface_hub import hf_hub_download, list_repo_files, login
+
+# Disable XET for reliable LFS/S3 transfer
+os.environ["HF_HUB_DISABLE_XET"] = "1"
 
 from src.languages import Language, PROJECT_ROOT
 
@@ -113,16 +117,33 @@ def download_checkpoint(lang: Language, step: int = None, repo_id: str = None, s
     dest_dir = lang.checkpoint_dir if stage == "pretraining" else lang.finetune_checkpoint_dir
     dest = dest_dir / Path(filename).name
 
-    if dest.exists():
-        logger.info("Already present, nothing to do: %s", dest)
-        return dest
-
-    logger.info("Downloading %s from %s ...", filename, repo_id)
     dest_dir.mkdir(parents=True, exist_ok=True)
-    cached = hf_hub_download(repo_id=repo_id, filename=filename)
+    if not dest.exists():
+        logger.info("Downloading %s from %s ...", filename, repo_id)
+        cached = hf_hub_download(repo_id=repo_id, filename=filename)
+        shutil.copyfile(cached, dest)
+        logger.info("Saved to %s", dest)
+    else:
+        logger.info("Checkpoint already present: %s", dest)
 
-    shutil.copyfile(cached, dest)
-    logger.info("Saved to %s", dest)
+    # Write latest_checkpoint.txt pointer
+    (dest_dir / "latest_checkpoint.txt").write_text(str(dest))
+
+    # Also download training logs if available on the Hub
+    subfolder = f"{lang.key}/{stage}"
+    files = list_repo_files(repo_id)
+    log_dir = lang.log_dir if stage == "pretraining" else lang.finetune_log_dir
+    log_dir.mkdir(parents=True, exist_ok=True)
+    for name in ("train_loss.json", "val_loss.json"):
+        remote = f"{subfolder}/logs/{name}"
+        if remote in files:
+            try:
+                log_cached = hf_hub_download(repo_id=repo_id, filename=remote)
+                shutil.copyfile(log_cached, log_dir / name)
+                logger.info("Saved log to %s", log_dir / name)
+            except Exception as e:
+                logger.warning("Could not download log %s: %s", remote, e)
+
     return dest
 
 

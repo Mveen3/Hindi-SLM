@@ -1,0 +1,10 @@
+{
+  "language": "hindi",
+  "model": "Model H",
+  "split": "test",
+  "cross_entropy_loss": 3.3508,
+  "perplexity": 28.53,
+  "bits_per_byte": 0.4929,
+  "total_tokens": 606214,
+  "total_bytes": 5945754
+}
