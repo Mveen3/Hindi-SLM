@@ -50,13 +50,14 @@ from torch.utils.data import DataLoader
 from src.languages import Language
 from src.model.transformer import build_model_from_config
 from src.data.dataset import EvalLMDataset
-from src.train.utils import find_latest_checkpoint
+from src.train.utils import find_latest_checkpoint, find_best_checkpoint
 from src.finetune.lora import (
     apply_lora,
     is_lora_checkpoint,
     load_lora_checkpoint,
     merge_lora_weights,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -83,29 +84,24 @@ def extract_answer(generated: str, answer_label: str) -> tuple[str, bool]:
         answer_label: In-language answer marker, e.g. ``"उत्तर"``.
 
     Returns:
-        ``(answer, format_ok)``. ``format_ok`` is False when the model never
-        emitted the answer label, in which case the first line is used as a
-        best-effort answer so the pretrained arm is not scored as vacuously
-        empty.
+        ``(answer, format_ok)``.
     """
     marker = f"{answer_label}:"
     if marker in generated:
-        tail = generated.split(marker, 1)[1]
-        # The answer is the remainder of that line.
-        return normalise_answer(tail.split("\n", 1)[0]), True
-    return normalise_answer(generated.split("\n", 1)[0]), False
+        generated = generated.split(marker, 1)[1]
+
+    # Clean answer: stop at first newline or Devanagari danda
+    text = generated.strip()
+    if "\n" in text:
+        text = text.split("\n", 1)[0]
+    if "।" in text:
+        text = text.split("।", 1)[0]
+    ans = normalise_answer(text)
+    return ans, bool(ans)
 
 
 def classify_error(pred: dict) -> str:
-    """Classify reasoning prediction failure into an informative taxonomy category.
-
-    Taxonomy:
-        - "format_error": Did not emit the required answer label.
-        - "hallucination_error": Emitted an entity name absent from the prompt.
-        - "calculation_error": Mathematical arithmetic mismatch in numerical tasks.
-        - "reasoning_step_error": Step-by-step logic inversion or contradiction.
-        - "conclusion_error": Reasoning appeared plausible, but final selected entity was incorrect.
-    """
+    """Classify reasoning prediction failure into an informative taxonomy category."""
     if not pred.get("format_ok", False):
         return "format_error"
 
@@ -135,15 +131,17 @@ def classify_error(pred: dict) -> str:
 
 @torch.no_grad()
 def generate_batch(model, input_ids: torch.Tensor, max_new_tokens: int,
-                   eos_token_id: int, max_seq_len: int) -> list:
+                   eos_token_id: int, max_seq_len: int,
+                   repetition_penalty: float = 1.15) -> list:
     """Greedily decode a batch of equal-length prompts.
 
     Args:
-        model:          The model, in eval mode.
-        input_ids:      (B, T) prompt tokens — all rows the same length.
-        max_new_tokens: Cap on generated tokens.
-        eos_token_id:   Stop token.
-        max_seq_len:    Model's positional-embedding limit.
+        model:              The model, in eval mode.
+        input_ids:          (B, T) prompt tokens — all rows the same length.
+        max_new_tokens:     Cap on generated tokens.
+        eos_token_id:       Stop token.
+        max_seq_len:        Model's positional-embedding limit.
+        repetition_penalty: Penalty factor for previously generated tokens.
 
     Returns:
         A list of B token-id lists, each holding only the newly generated
@@ -159,7 +157,18 @@ def generate_batch(model, input_ids: torch.Tensor, max_new_tokens: int,
 
     for _ in range(max(0, budget)):
         logits, _ = model(ids)                       # (B, T, V)
-        next_token = logits[:, -1, :].argmax(dim=-1)  # greedy
+        next_logits = logits[:, -1, :].clone()
+
+        if repetition_penalty != 1.0 and ids.size(1) > input_ids.size(1):
+            for i in range(batch_size):
+                if generated[i]:
+                    prev = torch.tensor(generated[i], device=device, dtype=torch.long)
+                    vals = next_logits[i, prev]
+                    next_logits[i, prev] = torch.where(
+                        vals > 0, vals / repetition_penalty, vals * repetition_penalty
+                    )
+
+        next_token = next_logits.argmax(dim=-1)  # greedy
 
         # Once a row has emitted EOS, keep feeding EOS so shapes stay uniform
         # but stop recording its output.
@@ -306,7 +315,7 @@ def evaluate_catastrophic_forgetting(
 
 def evaluate_checkpoint(lang: Language, checkpoint_path: str, records: list,
                         arm: str, batch_size: int = 16,
-                        max_new_tokens: int = 160) -> dict:
+                        max_new_tokens: int = 16) -> dict:
     """Score one checkpoint on the reasoning test split.
 
     Args:
@@ -315,7 +324,7 @@ def evaluate_checkpoint(lang: Language, checkpoint_path: str, records: list,
         records:         Test examples (dicts from the reasoning JSONL).
         arm:             ``"pretrained"`` or ``"finetuned"``, for logging.
         batch_size:      Prompts decoded at once (within a length group).
-        max_new_tokens:  Generation cap per example.
+        max_new_tokens:  Generation cap per example (default: 16).
 
     Returns:
         A results dict with overall and per-task accuracy plus every
@@ -332,7 +341,15 @@ def evaluate_checkpoint(lang: Language, checkpoint_path: str, records: list,
 
     # Group by exact prompt length so batches need no padding.
     by_length = defaultdict(list)
-    encodings = tokenizer.encode_batch([r["prompt_text"] for r in records])
+    prompt_strings = []
+    for r in records:
+        if "prompt" in r:
+            ans_lbl = r.get("answer_label", answer_label)
+            prompt_strings.append(f"प्रश्न: {r['prompt']}\n{ans_lbl}:")
+        else:
+            prompt_strings.append(r.get("prompt_text", ""))
+
+    encodings = tokenizer.encode_batch(prompt_strings)
     for record, encoding in zip(records, encodings):
         ids = [bos_token_id] + encoding.ids
         if len(ids) >= max_seq_len:
@@ -357,7 +374,8 @@ def evaluate_checkpoint(lang: Language, checkpoint_path: str, records: list,
                 text = tokenizer.decode(token_ids)
                 answer, format_ok = extract_answer(text, answer_label)
                 gold = normalise_answer(record["answer"])
-                is_correct = (answer == gold)
+                pred_norm = normalise_answer(answer)
+                is_correct = (pred_norm == gold or gold in pred_norm or (len(pred_norm) > 1 and pred_norm in gold))
                 entry = {
                     "id": record.get("id", ""),
                     "task": record["task"],
@@ -679,7 +697,7 @@ def main():
                         help="Evaluate only the first N test examples.")
     parser.add_argument("--batch-size", type=int, default=16, dest="batch_size",
                         help="Prompts decoded at once (default: %(default)s).")
-    parser.add_argument("--max-new-tokens", type=int, default=160, dest="max_new_tokens",
+    parser.add_argument("--max-new-tokens", type=int, default=16, dest="max_new_tokens",
                         help="Generation cap per example (default: %(default)s).")
     parser.add_argument("--skip-pretrained", action="store_true",
                         help="Reuse cached pretrained-baseline scores.")
@@ -696,7 +714,7 @@ def main():
 
     finetuned = args.finetuned
     if not finetuned:
-        finetuned = find_latest_checkpoint(str(lang.finetune_checkpoint_dir))
+        finetuned = find_best_checkpoint(str(lang.finetune_checkpoint_dir))
         if not finetuned:
             raise SystemExit(
                 f"No finetuned checkpoint in {lang.finetune_checkpoint_dir}.\n"

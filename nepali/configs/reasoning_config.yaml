@@ -66,14 +66,12 @@ task_weights:
   mixed_direction_chain: 1.2
 
 # Hard cap on the tokenized length of one finetuning sequence, measured with
-# the frozen Phase 1 Nepali tokenizer. The pretrained context is 512 tokens, so
-# anything longer would be truncated mid-chain-of-thought and train the model on
-# an answer that was cut off. Over-length examples are re-sampled instead.
-max_sequence_tokens: 448
+# the frozen Phase 1 Nepali tokenizer.
+max_sequence_tokens: 256
 
-# Fraction of examples that ask for the answer with no reasoning trace.
-# 0.0 keeps every target in "प्रश्न / तर्क / उत्तर" chain-of-thought form.
-direct_answer_fraction: 0.0
+# Fraction of examples that ask for the answer directly with no intermediate reasoning trace.
+# 1.0 produces direct "प्रश्न / उत्तर" pairs matching friend's proven approach.
+direct_answer_fraction: 1.0
 
 # ---- In-language phrasing author (Groq) ----------------------------------
 # gpt-oss-120b writes only the WORDING (templates, names, attribute vocabulary);

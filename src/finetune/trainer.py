@@ -205,7 +205,7 @@ def finetune(lang: Language, config: dict, pretrained_checkpoint: str,
     checkpoint_dir = str(lang.finetune_checkpoint_dir)
     log_dir = str(lang.finetune_log_dir)
 
-    peft_type = str(config.get("peft_type", "lora")).lower()
+    peft_type = str(config.get("peft_type", "full")).lower()
     lora_rank = int(config.get("lora_rank", 8))
     lora_alpha = float(config.get("lora_alpha", 16.0))
     lora_dropout = float(config.get("lora_dropout", 0.05))
@@ -213,10 +213,12 @@ def finetune(lang: Language, config: dict, pretrained_checkpoint: str,
 
     # Determine resume path if available
     resume_path = None
-    if config.get("resume_from", "latest") == "latest":
-        resume_path = find_latest_checkpoint(checkpoint_dir)
-    elif config.get("resume_from") and Path(config["resume_from"]).exists():
-        resume_path = config["resume_from"]
+    resume_cfg = config.get("resume_from", "latest")
+    if resume_cfg and str(resume_cfg).lower() not in ("none", "false", "null", ""):
+        if resume_cfg == "latest":
+            resume_path = find_latest_checkpoint(checkpoint_dir)
+        elif Path(str(resume_cfg)).exists():
+            resume_path = str(resume_cfg)
 
     # If starting fresh from pretrained weights, sync architecture from checkpoint
     if not resume_path:
@@ -282,15 +284,31 @@ def finetune(lang: Language, config: dict, pretrained_checkpoint: str,
     # ----- Optimizer / scheduler / scaler -----
     lr = config.get("learning_rate")
     if lr is None:
-        lr = 1.0e-4 if peft_type == "lora" else 1.5e-5
+        lr = 1.0e-4 if peft_type == "lora" else 2.0e-5
 
-    trainable_params = [p for p in model.parameters() if p.requires_grad]
+    weight_decay = float(config.get("weight_decay", 0.01))
+    decay_params = []
+    no_decay_params = []
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        if param.dim() >= 2 and "norm" not in name.lower():
+            decay_params.append(param)
+        else:
+            no_decay_params.append(param)
+
+    optim_groups = [
+        {"params": decay_params, "weight_decay": weight_decay},
+        {"params": no_decay_params, "weight_decay": 0.0},
+    ]
+
+    use_fused = torch.cuda.is_available() and hasattr(torch.optim.AdamW, "fused")
     optimizer = torch.optim.AdamW(
-        trainable_params,
+        optim_groups,
         lr=lr,
-        weight_decay=config.get("weight_decay", 0.01),
-        betas=tuple(config.get("betas", [0.9, 0.95])),
-        eps=config.get("eps", 1e-8),
+        betas=tuple(config.get("betas", [0.9, 0.98])),
+        eps=float(config.get("eps", 1e-8)),
+        fused=use_fused,
     )
     scheduler = get_lr_scheduler(optimizer, warmup_steps=warmup_steps, max_steps=max_steps)
     use_amp = config.get("use_amp", True) and torch.cuda.is_available()
@@ -352,6 +370,10 @@ def finetune(lang: Language, config: dict, pretrained_checkpoint: str,
 
     epoch = 0
     done = False
+    patience = config.get("early_stopping_patience", 6)
+    patience_counter = 0
+    label_smoothing = float(config.get("label_smoothing", 0.05))
+
     while not done:
         if hasattr(train_loader.batch_sampler, "set_epoch"):
             train_loader.batch_sampler.set_epoch(epoch)
@@ -361,7 +383,7 @@ def finetune(lang: Language, config: dict, pretrained_checkpoint: str,
             targets = batch["targets"].to(device, non_blocking=True)
 
             with torch.amp.autocast("cuda", enabled=use_amp):
-                _, loss = model(input_ids, targets=targets)
+                _, loss = model(input_ids, targets=targets, label_smoothing=label_smoothing)
                 loss = loss / grad_accum
 
             scaler.scale(loss).backward()
@@ -396,8 +418,41 @@ def finetune(lang: Language, config: dict, pretrained_checkpoint: str,
                 val_loss_history.append((global_step, val_loss))
                 marker = ""
                 if val_loss < best_val:
-                    best_val, marker = val_loss, "  <- best so far"
+                    best_val, marker = val_loss, "  <- best so far (saved best_checkpoint.pt)"
+                    patience_counter = 0
+                    if peft_type == "lora":
+                        save_lora_checkpoint(
+                            model=model,
+                            checkpoint_path=f"{checkpoint_dir}/best_checkpoint.pt",
+                            config=config,
+                            step=global_step,
+                            optimizer=optimizer,
+                            scheduler=scheduler,
+                            scaler=scaler,
+                            loss_history=loss_history,
+                            val_loss_history=val_loss_history,
+                        )
+                    else:
+                        save_checkpoint(
+                            model=model,
+                            optimizer=optimizer,
+                            scheduler=scheduler,
+                            scaler=scaler,
+                            step=global_step,
+                            config=config,
+                            loss_history=loss_history,
+                            val_loss_history=val_loss_history,
+                            checkpoint_dir=checkpoint_dir,
+                            filename="best_checkpoint.pt",
+                        )
+                else:
+                    patience_counter += 1
                 logger.info("Step %d | Validation loss: %.4f%s", global_step, val_loss, marker)
+
+                if patience_counter >= patience and global_step >= 200:
+                    logger.info("Early stopping triggered: validation loss did not improve for %d eval cycles.", patience)
+                    done = True
+                    break
 
             if global_step % save_interval == 0:
                 if peft_type == "lora":
@@ -583,7 +638,7 @@ def main():
             args.limit = 100
 
     if args.fresh:
-        overrides["resume_from"] = None
+        overrides["resume_from"] = "none"
 
     summary = run(lang, pretrained, config_path=args.config, limit=args.limit, overrides=overrides)
     print("\n" + "=" * 62)

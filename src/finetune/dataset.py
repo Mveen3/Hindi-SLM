@@ -59,11 +59,13 @@ class ReasoningSFTDataset(Dataset):
         limit:         Optional cap on examples, for quick smoke runs.
     """
 
-    def __init__(self, data_path, tokenizer_path, max_seq_len: int = 512,
+    def __init__(self, data_path, tokenizer_path, max_seq_len: int = 256,
                  pad_token_id: int = 0, bos_token_id: int = 2,
-                 eos_token_id: int = 3, limit: int | None = None):
+                 eos_token_id: int = 3, limit: int | None = None,
+                 direct_mode: bool = True):
         self.pad_token_id = pad_token_id
         self.max_seq_len = max_seq_len
+        self.direct_mode = direct_mode
 
         tokenizer = Tokenizer.from_file(str(tokenizer_path))
 
@@ -77,10 +79,21 @@ class ReasoningSFTDataset(Dataset):
                 if limit and len(records) >= limit:
                     break
 
-        # Batch-encode both halves; the tokenizer's Rust backend makes this
-        # far faster than encoding example by example.
-        prompt_encodings = tokenizer.encode_batch([r["prompt_text"] for r in records])
-        target_encodings = tokenizer.encode_batch([r["target"] for r in records])
+        # Batch-encode both halves. When direct_mode is active, format prompt directly
+        # with answer label suffix and completion as target, masking prompt out of loss.
+        prompt_texts = []
+        target_texts = []
+        for r in records:
+            if direct_mode and "prompt" in r and "answer" in r:
+                ans_lbl = r.get("answer_label", "उत्तर")
+                prompt_texts.append(f"प्रश्न: {r['prompt']}\n{ans_lbl}:")
+                target_texts.append(f" {r['answer']}")
+            else:
+                prompt_texts.append(r.get("prompt_text", ""))
+                target_texts.append(r.get("target", ""))
+
+        prompt_encodings = tokenizer.encode_batch(prompt_texts)
+        target_encodings = tokenizer.encode_batch(target_texts)
 
         self.examples = []
         self.dropped = 0
@@ -96,8 +109,8 @@ class ReasoningSFTDataset(Dataset):
             self.examples.append({
                 "full": full,
                 "n_prompt": len(prompt_ids),
-                "answer": record["answer"],
-                "task": record["task"],
+                "answer": record.get("answer", ""),
+                "task": record.get("task", ""),
                 "id": record.get("id", ""),
             })
 
@@ -109,13 +122,7 @@ class ReasoningSFTDataset(Dataset):
         return [len(e["full"]) for e in self.examples]
 
     def __getitem__(self, index: int) -> dict:
-        """Build the shifted input/label pair with the prompt masked out.
-
-        ``labels[i]`` is the token the model must predict from ``input_ids[i]``.
-        Position *i* predicts ``full[i+1]``, which belongs to the target only
-        once ``i + 1 >= n_prompt`` — so everything before ``n_prompt - 1`` is
-        masked.
-        """
+        """Build the shifted input/label pair with the prompt masked out with -100."""
         example = self.examples[index]
         full = example["full"]
         n_prompt = example["n_prompt"]
@@ -123,7 +130,7 @@ class ReasoningSFTDataset(Dataset):
         input_ids = full[:-1]
         labels = list(full[1:])
         for i in range(min(n_prompt - 1, len(labels))):
-            labels[i] = self.pad_token_id
+            labels[i] = -100
 
         return {
             "input_ids": torch.tensor(input_ids, dtype=torch.long),
@@ -134,14 +141,12 @@ class ReasoningSFTDataset(Dataset):
 def collate_padded(batch: list, pad_token_id: int = 0) -> dict:
     """Right-pad a batch to its own longest sequence.
 
-    Padding to the batch maximum rather than to ``max_seq_len`` is what makes
-    length bucketing pay off; combined, they keep almost every position in a
-    batch a real token.
+    Padding target positions are filled with -100 (ignored by cross-entropy loss).
     """
     max_len = max(item["input_ids"].size(0) for item in batch)
 
     input_ids = torch.full((len(batch), max_len), pad_token_id, dtype=torch.long)
-    labels = torch.full((len(batch), max_len), pad_token_id, dtype=torch.long)
+    labels = torch.full((len(batch), max_len), -100, dtype=torch.long)
 
     for i, item in enumerate(batch):
         length = item["input_ids"].size(0)
@@ -228,11 +233,12 @@ def create_finetune_dataloader(lang: Language, split: str, config: dict,
     dataset = ReasoningSFTDataset(
         data_path=data_path,
         tokenizer_path=lang.tokenizer_path,
-        max_seq_len=config.get("max_seq_len", 512),
+        max_seq_len=config.get("max_seq_len", 256),
         pad_token_id=pad_token_id,
         bos_token_id=config.get("bos_token_id", 2),
         eos_token_id=config.get("eos_token_id", 3),
         limit=limit,
+        direct_mode=config.get("direct_mode", True),
     )
 
     sampler = LengthBucketSampler(

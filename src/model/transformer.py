@@ -377,6 +377,7 @@ class DecoderOnlyTransformer(nn.Module):
         input_ids: torch.Tensor,
         targets: torch.Tensor = None,
         return_attention: bool = False,
+        label_smoothing: float = 0.0,
     ):
         """
         Forward pass for the decoder-only Transformer.
@@ -386,6 +387,7 @@ class DecoderOnlyTransformer(nn.Module):
             targets:          (B, T) target token IDs for loss computation.
                               If None, loss is not computed.
             return_attention:  If True, return per-layer attention weight tensors.
+            label_smoothing:  Label smoothing epsilon for CrossEntropyLoss.
 
         Returns:
             logits: (B, T, vocab_size) next-token prediction logits.
@@ -423,19 +425,79 @@ class DecoderOnlyTransformer(nn.Module):
         loss = None
         if targets is not None:
             # Flatten for cross-entropy: (B*T, vocab_size) vs (B*T,)
+            loss_targets = targets.view(-1)
+            if self.pad_token_id is not None and self.pad_token_id >= 0:
+                # If pad_token_id is in targets, map it to -100 so both are ignored
+                if (loss_targets == self.pad_token_id).any():
+                    loss_targets = loss_targets.clone()
+                    loss_targets[loss_targets == self.pad_token_id] = -100
             loss = F.cross_entropy(
                 logits.view(-1, self.vocab_size),
-                targets.view(-1),
-                ignore_index=self.pad_token_id,
+                loss_targets,
+                ignore_index=-100,
+                label_smoothing=label_smoothing,
             )
-            # IMPORTANT: During training with nn.DataParallel, gathering the massive
-            # logits tensor across GPUs causes OOM (Out Of Memory). We discard it here.
+            # Discard logits during training to prevent OOM
             logits = torch.empty(0, device=logits.device)
 
         # Build return tuple
         if return_attention:
             return logits, loss, all_attn_weights
         return logits, loss
+
+    @torch.no_grad()
+    def generate(
+        self,
+        input_ids: torch.Tensor,
+        max_new_tokens: int = 16,
+        do_sample: bool = False,
+        temperature: float = 1.0,
+        eos_token_id: int | None = None,
+        stop_token_ids: set[int] | list[int] | None = None,
+        repetition_penalty: float = 1.0,
+    ) -> torch.Tensor:
+        """Autoregressively extend input_ids (B, T) by up to max_new_tokens."""
+        was_training = self.training
+        self.eval()
+        generated = input_ids.clone()
+        finished = torch.zeros(input_ids.size(0), dtype=torch.bool, device=input_ids.device)
+        stop_set = set(stop_token_ids) if stop_token_ids else set()
+        if eos_token_id is not None:
+            stop_set.add(eos_token_id)
+
+        try:
+            for _ in range(max_new_tokens):
+                context = generated[:, -self.max_seq_len:]
+                logits, _ = self.forward(context)
+                next_logits = logits[:, -1, :].clone()
+
+                if repetition_penalty != 1.0 and generated.size(1) > input_ids.size(1):
+                    for b in range(generated.size(0)):
+                        gen_tokens = torch.unique(generated[b, input_ids.size(1):])
+                        vals = next_logits[b, gen_tokens]
+                        next_logits[b, gen_tokens] = torch.where(
+                            vals > 0, vals / repetition_penalty, vals * repetition_penalty
+                        )
+
+                if do_sample:
+                    probs = F.softmax(next_logits / max(temperature, 1e-8), dim=-1)
+                    next_token = torch.multinomial(probs, num_samples=1)
+                else:
+                    next_token = next_logits.argmax(dim=-1, keepdim=True)
+
+                if eos_token_id is not None:
+                    next_token = torch.where(finished.unsqueeze(-1), torch.full_like(next_token, eos_token_id), next_token)
+                generated = torch.cat([generated, next_token], dim=1)
+
+                if stop_set:
+                    for b in range(input_ids.size(0)):
+                        if int(next_token[b, 0].item()) in stop_set:
+                            finished[b] = True
+                    if bool(finished.all()):
+                        break
+            return generated
+        finally:
+            self.train(was_training)
 
 
 # ---------------------------------------------------------------------------

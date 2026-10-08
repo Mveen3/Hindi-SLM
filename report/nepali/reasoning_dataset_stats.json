@@ -9,8 +9,8 @@
     "val": 2500,
     "test": 2500
   },
-  "direct_answer_fraction": 0.0,
-  "max_sequence_tokens": 448,
+  "direct_answer_fraction": 1.0,
+  "max_sequence_tokens": 256,
   "tasks": {
     "compare_two_more": {
       "fact_kind": "value",
@@ -295,7 +295,7 @@
         "weight": 4436
       },
       "by_style": {
-        "cot": 40000
+        "direct": 40000
       },
       "by_n_entities": {
         "2": 11923,
@@ -348,7 +348,7 @@
         "weight": 278
       },
       "by_style": {
-        "cot": 2500
+        "direct": 2500
       },
       "by_n_entities": {
         "2": 687,
@@ -401,7 +401,7 @@
         "weight": 284
       },
       "by_style": {
-        "cot": 2500
+        "direct": 2500
       },
       "by_n_entities": {
         "2": 774,
@@ -417,30 +417,30 @@
     "train": {
       "available": true,
       "sampled": 2000,
-      "mean_tokens": 135.2,
-      "median_tokens": 121,
-      "p95_tokens": 251,
-      "max_tokens": 349,
+      "mean_tokens": 58.9,
+      "median_tokens": 55,
+      "p95_tokens": 89,
+      "max_tokens": 106,
       "examples_with_unk": 0,
       "unk_tokens": 0
     },
     "val": {
       "available": true,
       "sampled": 2000,
-      "mean_tokens": 135.0,
-      "median_tokens": 124,
-      "p95_tokens": 259,
-      "max_tokens": 324,
+      "mean_tokens": 57.6,
+      "median_tokens": 54,
+      "p95_tokens": 90,
+      "max_tokens": 105,
       "examples_with_unk": 0,
       "unk_tokens": 0
     },
     "test": {
       "available": true,
       "sampled": 2000,
-      "mean_tokens": 131.8,
-      "median_tokens": 118,
-      "p95_tokens": 249,
-      "max_tokens": 325,
+      "mean_tokens": 55.8,
+      "median_tokens": 52,
+      "p95_tokens": 82,
+      "max_tokens": 104,
       "examples_with_unk": 0,
       "unk_tokens": 0
     }

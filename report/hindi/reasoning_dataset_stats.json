@@ -9,8 +9,8 @@
     "val": 2500,
     "test": 2500
   },
-  "direct_answer_fraction": 0.0,
-  "max_sequence_tokens": 448,
+  "direct_answer_fraction": 1.0,
+  "max_sequence_tokens": 256,
   "tasks": {
     "compare_two_more": {
       "fact_kind": "value",
@@ -295,7 +295,7 @@
         "weight": 4535
       },
       "by_style": {
-        "cot": 40000
+        "direct": 40000
       },
       "by_n_entities": {
         "2": 11858,
@@ -348,7 +348,7 @@
         "weight": 275
       },
       "by_style": {
-        "cot": 2500
+        "direct": 2500
       },
       "by_n_entities": {
         "2": 760,
@@ -401,7 +401,7 @@
         "weight": 257
       },
       "by_style": {
-        "cot": 2500
+        "direct": 2500
       },
       "by_n_entities": {
         "2": 765,
@@ -409,7 +409,7 @@
         "4": 499,
         "5": 322
       },
-      "mean_prompt_chars": 187.1,
+      "mean_prompt_chars": 187.5,
       "mean_reasoning_chars": 284.0
     }
   },
@@ -417,30 +417,30 @@
     "train": {
       "available": true,
       "sampled": 2000,
-      "mean_tokens": 141.1,
-      "median_tokens": 126,
-      "p95_tokens": 262,
-      "max_tokens": 343,
+      "mean_tokens": 59.7,
+      "median_tokens": 56,
+      "p95_tokens": 88,
+      "max_tokens": 104,
       "examples_with_unk": 0,
       "unk_tokens": 0
     },
     "val": {
       "available": true,
       "sampled": 2000,
-      "mean_tokens": 139.0,
-      "median_tokens": 123,
-      "p95_tokens": 269,
-      "max_tokens": 363,
+      "mean_tokens": 59.4,
+      "median_tokens": 55,
+      "p95_tokens": 91,
+      "max_tokens": 107,
       "examples_with_unk": 0,
       "unk_tokens": 0
     },
     "test": {
       "available": true,
       "sampled": 2000,
-      "mean_tokens": 138.3,
-      "median_tokens": 124,
-      "p95_tokens": 267,
-      "max_tokens": 349,
+      "mean_tokens": 57.2,
+      "median_tokens": 54,
+      "p95_tokens": 88,
+      "max_tokens": 106,
       "examples_with_unk": 0,
       "unk_tokens": 0
     }

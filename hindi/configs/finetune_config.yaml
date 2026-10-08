@@ -20,47 +20,47 @@
 # disjoint across train/val/test, so val and test measure generalisation.
 
 # ---- Parameter-Efficient Fine-Tuning (PEFT) -----------------------------
-# "lora" (recommended) or "full". With LoRA (r=8, alpha=16 on W_q, W_v), trainable
-# parameters drop from 24.3M down to 147k (0.6%). Local VRAM on RTX 3050 (4 GB)
-# drops to < 1.2 GB, training is ~2.5x faster, and base representations are preserved.
-peft_type: "lora"
+# "full" (recommended, matching friend's proven >60% accuracy approach) or "lora".
+# Full finetuning tunes all 24.5M parameters on direct reasoning QA pairs.
+peft_type: "full"
 lora_rank: 8
 lora_alpha: 16.0
 lora_dropout: 0.05
 lora_target_modules: ["W_q", "W_v"]
 save_merged: true
 
-# ---- Batching ------------------------------------------------------------
-# Effective batch = batch_size x gradient_accumulation_steps = 128 sequences,
-# matching the pretraining effective batch so the LR is in a familiar regime.
+# ---- Batching & Sequence Length ------------------------------------------
+# Micro batch 16, gradient accumulation 2 -> effective batch size 32.
+# Direct question-answer sequences fit comfortably within 256 tokens.
 batch_size: 16
-gradient_accumulation_steps: 8
+gradient_accumulation_steps: 2
+max_seq_len: 256
+direct_mode: true
 num_workers: 2
 
 # ---- Optimizer -----------------------------------------------------------
-# AdamW. Learning rate is 1e-4 for LoRA adapters (or 1.5e-5 for full fine-tuning).
+# AdamW. Learning rate is 2e-5 for full finetuning, weight decay on 2D weights.
 optimizer: "adamw"
-learning_rate: 1.0e-4
-weight_decay: 0.01
-betas: [0.9, 0.95]
+learning_rate: 2.0e-5
+min_learning_rate: 1.0e-6
+weight_decay: 0.05
+label_smoothing: 0.05
+betas: [0.9, 0.98]
 eps: 1.0e-8
 max_grad_norm: 1.0
 
 # ---- Schedule ------------------------------------------------------------
-# Cosine decay with a short warmup (3% of total steps, computed automatically
-# when warmup_steps is null). max_steps is derived from epochs x steps-per-epoch
-# unless set explicitly here.
+# Cosine decay with 30-step linear warmup, 600 max steps with validation tracking.
 lr_scheduler: "cosine"
-epochs: 3
-max_steps: null
-warmup_steps: null
+epochs: 2
+max_steps: 600
+warmup_steps: 30
+early_stopping_patience: 6
 
 # ---- Evaluation / logging / checkpointing --------------------------------
-# Checkpoints use the identical resume-capable format as pretraining: weights,
-# optimizer state, scheduler state, AMP scaler, step and full config.
-eval_interval: 100
+eval_interval: 50
 log_interval: 25
-save_interval: 200
+save_interval: 100
 eval_max_batches: 50
 
 # ---- Mixed precision -----------------------------------------------------

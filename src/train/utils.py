@@ -35,31 +35,9 @@ def save_checkpoint(
     loss_history: list,
     val_loss_history: list,
     checkpoint_dir: str,
+    filename: str | None = None,
 ):
-    """
-    Save a full training checkpoint.
-
-    The checkpoint contains everything needed to resume training:
-        - model_state_dict
-        - optimizer_state_dict
-        - scheduler_state_dict
-        - scaler_state_dict (AMP)
-        - step (current global training step)
-        - config (full model + training config)
-        - loss_history (list of (step, loss) tuples)
-        - val_loss_history (list of (step, val_loss) tuples)
-
-    Args:
-        model:            The model.
-        optimizer:        The optimizer.
-        scheduler:        The LR scheduler.
-        scaler:           The GradScaler for AMP.
-        step:             Current global step.
-        config:           Full configuration dictionary.
-        loss_history:     Training loss history.
-        val_loss_history: Validation loss history.
-        checkpoint_dir:   Directory to save checkpoints.
-    """
+    """Save a full training checkpoint."""
     ckpt_dir = Path(checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
@@ -74,14 +52,19 @@ def save_checkpoint(
         "val_loss_history": val_loss_history,
     }
 
-    ckpt_path = ckpt_dir / f"checkpoint_step_{step}.pt"
+    ckpt_name = filename or f"checkpoint_step_{step}.pt"
+    ckpt_path = ckpt_dir / ckpt_name
     torch.save(checkpoint, ckpt_path)
     logger.info(f"Checkpoint saved: {ckpt_path}")
 
-    # Also save a pointer to the latest checkpoint for easy resume
-    latest_path = ckpt_dir / "latest_checkpoint.txt"
-    with open(latest_path, "w") as f:
-        f.write(str(ckpt_path))
+    if filename is None:
+        latest_path = ckpt_dir / "latest_checkpoint.txt"
+        with open(latest_path, "w") as f:
+            f.write(str(ckpt_path))
+    elif "best" in filename:
+        best_path = ckpt_dir / "best_checkpoint.txt"
+        with open(best_path, "w") as f:
+            f.write(str(ckpt_path))
 
 
 def load_checkpoint(
@@ -182,6 +165,25 @@ def find_latest_checkpoint(checkpoint_dir: str):
 
     checkpoints.sort(key=lambda x: x[0], reverse=True)
     return checkpoints[0][1]
+
+
+def find_best_checkpoint(checkpoint_dir: str):
+    """
+    Find the best validation checkpoint in the given directory.
+    Falls back to find_latest_checkpoint if no best_checkpoint exists.
+    """
+    ckpt_dir = Path(checkpoint_dir)
+    if not ckpt_dir.exists():
+        return None
+    best_file = ckpt_dir / "best_checkpoint.txt"
+    if best_file.exists():
+        path = best_file.read_text().strip()
+        if Path(path).exists():
+            return path
+    direct_best = ckpt_dir / "best_checkpoint.pt"
+    if direct_best.exists():
+        return str(direct_best)
+    return find_latest_checkpoint(checkpoint_dir)
 
 
 # ---------------------------------------------------------------------------

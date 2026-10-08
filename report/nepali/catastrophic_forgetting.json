@@ -1,10 +1,10 @@
 {
   "pretrained_val_ppl": 26.25,
-  "finetuned_val_ppl": 50.0,
+  "finetuned_val_ppl": 30.72,
   "pretrained_val_bpb": 0.401,
-  "finetuned_val_bpb": 0.4801,
-  "delta_ppl": 23.75,
-  "delta_bpb": 0.0791,
-  "retention_percent": 52.5,
-  "verdict": "Catastrophic Forgetting"
+  "finetuned_val_bpb": 0.4203,
+  "delta_ppl": 4.47,
+  "delta_bpb": 0.0193,
+  "retention_percent": 85.45,
+  "verdict": "Moderate Drift"
 }

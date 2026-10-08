@@ -14,306 +14,306 @@
     3
   ],
   "pretrained_checkpoint": "/home/mveen/Documents/lma_projects/slm/hindi/checkpoints/checkpoint_step_40000.pt",
-  "finetuned_checkpoint": "/home/mveen/Documents/lma_projects/slm/hindi/checkpoints_finetune/checkpoint_step_1560.pt",
+  "finetuned_checkpoint": "/home/mveen/Documents/lma_projects/slm/hindi/checkpoints_finetune/best_checkpoint.pt",
   "mean_attention_distance": {
     "per_head": {
       "L0H0": {
         "pretrained": 13.21,
-        "finetuned": 14.15,
-        "delta": 0.94
+        "finetuned": 13.19,
+        "delta": -0.02
       },
       "L0H1": {
         "pretrained": 8.98,
-        "finetuned": 9.14,
-        "delta": 0.16
+        "finetuned": 8.93,
+        "delta": -0.05
       },
       "L0H2": {
         "pretrained": 16.21,
-        "finetuned": 16.47,
-        "delta": 0.26
+        "finetuned": 16.12,
+        "delta": -0.09
       },
       "L0H3": {
         "pretrained": 12.57,
-        "finetuned": 12.05,
-        "delta": -0.52
+        "finetuned": 12.64,
+        "delta": 0.07
       },
       "L0H4": {
         "pretrained": 18.19,
-        "finetuned": 16.61,
-        "delta": -1.58
+        "finetuned": 17.7,
+        "delta": -0.49
       },
       "L0H5": {
         "pretrained": 12.56,
-        "finetuned": 12.45,
-        "delta": -0.11
+        "finetuned": 12.34,
+        "delta": -0.22
       },
       "L0H6": {
         "pretrained": 5.96,
-        "finetuned": 5.91,
-        "delta": -0.05
+        "finetuned": 5.87,
+        "delta": -0.09
       },
       "L0H7": {
         "pretrained": 11.01,
-        "finetuned": 10.52,
-        "delta": -0.49
+        "finetuned": 11.06,
+        "delta": 0.05
       },
       "L1H0": {
         "pretrained": 8.63,
-        "finetuned": 8.0,
-        "delta": -0.63
+        "finetuned": 8.32,
+        "delta": -0.31
       },
       "L1H1": {
         "pretrained": 10.9,
-        "finetuned": 10.98,
-        "delta": 0.08
+        "finetuned": 11.25,
+        "delta": 0.35
       },
       "L1H2": {
         "pretrained": 22.66,
-        "finetuned": 24.63,
-        "delta": 1.97
+        "finetuned": 21.84,
+        "delta": -0.82
       },
       "L1H3": {
         "pretrained": 17.72,
-        "finetuned": 18.37,
-        "delta": 0.65
+        "finetuned": 16.38,
+        "delta": -1.34
       },
       "L1H4": {
         "pretrained": 5.22,
-        "finetuned": 4.15,
-        "delta": -1.07
+        "finetuned": 5.11,
+        "delta": -0.11
       },
       "L1H5": {
         "pretrained": 13.4,
-        "finetuned": 13.44,
-        "delta": 0.04
+        "finetuned": 13.12,
+        "delta": -0.28
       },
       "L1H6": {
         "pretrained": 8.11,
-        "finetuned": 9.49,
-        "delta": 1.38
+        "finetuned": 7.17,
+        "delta": -0.94
       },
       "L1H7": {
         "pretrained": 20.64,
-        "finetuned": 21.84,
-        "delta": 1.2
+        "finetuned": 19.11,
+        "delta": -1.53
       },
       "L2H0": {
         "pretrained": 14.76,
-        "finetuned": 16.08,
-        "delta": 1.32
+        "finetuned": 15.46,
+        "delta": 0.7
       },
       "L2H1": {
         "pretrained": 6.92,
-        "finetuned": 10.04,
-        "delta": 3.12
+        "finetuned": 9.54,
+        "delta": 2.62
       },
       "L2H2": {
         "pretrained": 14.57,
-        "finetuned": 15.51,
-        "delta": 0.94
+        "finetuned": 16.24,
+        "delta": 1.67
       },
       "L2H3": {
         "pretrained": 4.64,
-        "finetuned": 4.67,
-        "delta": 0.03
+        "finetuned": 5.92,
+        "delta": 1.28
       },
       "L2H4": {
         "pretrained": 6.68,
-        "finetuned": 6.87,
-        "delta": 0.19
+        "finetuned": 6.17,
+        "delta": -0.51
       },
       "L2H5": {
         "pretrained": 3.77,
-        "finetuned": 3.93,
-        "delta": 0.16
+        "finetuned": 3.62,
+        "delta": -0.15
       },
       "L2H6": {
         "pretrained": 9.93,
-        "finetuned": 14.44,
-        "delta": 4.51
+        "finetuned": 14.1,
+        "delta": 4.17
       },
       "L2H7": {
         "pretrained": 13.91,
-        "finetuned": 13.32,
-        "delta": -0.59
+        "finetuned": 14.39,
+        "delta": 0.48
       },
       "L3H0": {
         "pretrained": 9.33,
-        "finetuned": 7.45,
-        "delta": -1.88
+        "finetuned": 7.98,
+        "delta": -1.35
       },
       "L3H1": {
         "pretrained": 11.22,
-        "finetuned": 11.33,
-        "delta": 0.11
+        "finetuned": 13.34,
+        "delta": 2.12
       },
       "L3H2": {
         "pretrained": 10.88,
-        "finetuned": 14.94,
-        "delta": 4.06
+        "finetuned": 13.08,
+        "delta": 2.2
       },
       "L3H3": {
         "pretrained": 6.27,
-        "finetuned": 5.27,
-        "delta": -1.0
+        "finetuned": 6.19,
+        "delta": -0.08
       },
       "L3H4": {
         "pretrained": 17.62,
-        "finetuned": 19.72,
-        "delta": 2.1
+        "finetuned": 16.89,
+        "delta": -0.73
       },
       "L3H5": {
         "pretrained": 5.4,
-        "finetuned": 5.18,
-        "delta": -0.22
+        "finetuned": 4.79,
+        "delta": -0.61
       },
       "L3H6": {
         "pretrained": 3.87,
-        "finetuned": 3.52,
-        "delta": -0.35
+        "finetuned": 4.34,
+        "delta": 0.47
       },
       "L3H7": {
         "pretrained": 0.99,
-        "finetuned": 0.99,
-        "delta": 0.0
+        "finetuned": 1.0,
+        "delta": 0.01
       },
       "L4H0": {
         "pretrained": 13.46,
-        "finetuned": 13.66,
-        "delta": 0.2
+        "finetuned": 12.59,
+        "delta": -0.87
       },
       "L4H1": {
         "pretrained": 10.37,
-        "finetuned": 10.82,
-        "delta": 0.45
+        "finetuned": 11.37,
+        "delta": 1.0
       },
       "L4H2": {
         "pretrained": 20.67,
-        "finetuned": 20.84,
-        "delta": 0.17
+        "finetuned": 20.99,
+        "delta": 0.32
       },
       "L4H3": {
         "pretrained": 19.61,
-        "finetuned": 18.84,
-        "delta": -0.77
+        "finetuned": 19.23,
+        "delta": -0.38
       },
       "L4H4": {
         "pretrained": 18.69,
-        "finetuned": 19.16,
-        "delta": 0.47
+        "finetuned": 20.31,
+        "delta": 1.62
       },
       "L4H5": {
         "pretrained": 10.07,
-        "finetuned": 10.77,
-        "delta": 0.7
+        "finetuned": 10.82,
+        "delta": 0.75
       },
       "L4H6": {
         "pretrained": 12.12,
-        "finetuned": 11.49,
-        "delta": -0.63
+        "finetuned": 13.15,
+        "delta": 1.03
       },
       "L4H7": {
         "pretrained": 23.46,
-        "finetuned": 22.68,
-        "delta": -0.78
+        "finetuned": 23.62,
+        "delta": 0.16
       },
       "L5H0": {
         "pretrained": 23.65,
-        "finetuned": 23.36,
-        "delta": -0.29
+        "finetuned": 21.19,
+        "delta": -2.46
       },
       "L5H1": {
         "pretrained": 21.26,
-        "finetuned": 22.7,
-        "delta": 1.44
+        "finetuned": 19.51,
+        "delta": -1.75
       },
       "L5H2": {
         "pretrained": 12.58,
-        "finetuned": 16.52,
-        "delta": 3.94
+        "finetuned": 9.1,
+        "delta": -3.48
       },
       "L5H3": {
         "pretrained": 14.74,
-        "finetuned": 16.45,
-        "delta": 1.71
+        "finetuned": 14.4,
+        "delta": -0.34
       },
       "L5H4": {
         "pretrained": 21.49,
-        "finetuned": 22.76,
-        "delta": 1.27
+        "finetuned": 19.97,
+        "delta": -1.52
       },
       "L5H5": {
         "pretrained": 13.02,
-        "finetuned": 14.32,
-        "delta": 1.3
+        "finetuned": 10.85,
+        "delta": -2.17
       },
       "L5H6": {
         "pretrained": 16.4,
-        "finetuned": 16.21,
-        "delta": -0.19
+        "finetuned": 16.82,
+        "delta": 0.42
       },
       "L5H7": {
         "pretrained": 19.44,
-        "finetuned": 21.25,
-        "delta": 1.81
+        "finetuned": 19.38,
+        "delta": -0.06
       }
     },
     "per_layer": {
       "layer_0": {
         "pretrained_mean": 12.3362,
-        "finetuned_mean": 12.1625,
-        "delta": -0.1738
+        "finetuned_mean": 12.2312,
+        "delta": -0.105
       },
       "layer_1": {
         "pretrained_mean": 13.41,
-        "finetuned_mean": 13.8625,
-        "delta": 0.4525
+        "finetuned_mean": 12.7875,
+        "delta": -0.6225
       },
       "layer_2": {
         "pretrained_mean": 9.3975,
-        "finetuned_mean": 10.6075,
-        "delta": 1.21
+        "finetuned_mean": 10.68,
+        "delta": 1.2825
       },
       "layer_3": {
         "pretrained_mean": 8.1975,
-        "finetuned_mean": 8.55,
-        "delta": 0.3525
+        "finetuned_mean": 8.4512,
+        "delta": 0.2538
       },
       "layer_4": {
         "pretrained_mean": 16.0562,
-        "finetuned_mean": 16.0325,
-        "delta": -0.0237
+        "finetuned_mean": 16.51,
+        "delta": 0.4537
       },
       "layer_5": {
         "pretrained_mean": 17.8225,
-        "finetuned_mean": 19.1962,
-        "delta": 1.3738
+        "finetuned_mean": 16.4025,
+        "delta": -1.42
       }
     },
-    "mean_delta": 0.5319,
+    "mean_delta": -0.0262,
     "largest_decrease": [
       [
-        "L3H0",
+        "L5H2",
         {
-          "pretrained": 9.33,
-          "finetuned": 7.45,
-          "delta": -1.88
+          "pretrained": 12.58,
+          "finetuned": 9.1,
+          "delta": -3.48
         }
       ],
       [
-        "L0H4",
+        "L5H0",
         {
-          "pretrained": 18.19,
-          "finetuned": 16.61,
-          "delta": -1.58
+          "pretrained": 23.65,
+          "finetuned": 21.19,
+          "delta": -2.46
         }
       ],
       [
-        "L1H4",
+        "L5H5",
         {
-          "pretrained": 5.22,
-          "finetuned": 4.15,
-          "delta": -1.07
+          "pretrained": 13.02,
+          "finetuned": 10.85,
+          "delta": -2.17
         }
       ]
     ],
@@ -322,24 +322,24 @@
         "L2H6",
         {
           "pretrained": 9.93,
-          "finetuned": 14.44,
-          "delta": 4.51
+          "finetuned": 14.1,
+          "delta": 4.17
+        }
+      ],
+      [
+        "L2H1",
+        {
+          "pretrained": 6.92,
+          "finetuned": 9.54,
+          "delta": 2.62
         }
       ],
       [
         "L3H2",
         {
           "pretrained": 10.88,
-          "finetuned": 14.94,
-          "delta": 4.06
-        }
-      ],
-      [
-        "L5H2",
-        {
-          "pretrained": 12.58,
-          "finetuned": 16.52,
-          "delta": 3.94
+          "finetuned": 13.08,
+          "delta": 2.2
         }
       ]
     ]
@@ -348,327 +348,327 @@
     "per_head": {
       "L0H0": {
         "pretrained": 2.9293,
-        "finetuned": 2.7796,
-        "delta": -0.1497
+        "finetuned": 2.9301,
+        "delta": 0.0008
       },
       "L0H1": {
         "pretrained": 2.387,
-        "finetuned": 2.3255,
-        "delta": -0.0615
+        "finetuned": 2.3885,
+        "delta": 0.0015
       },
       "L0H2": {
         "pretrained": 2.4145,
-        "finetuned": 2.3192,
-        "delta": -0.0953
+        "finetuned": 2.3962,
+        "delta": -0.0183
       },
       "L0H3": {
         "pretrained": 2.6547,
-        "finetuned": 2.5487,
-        "delta": -0.106
+        "finetuned": 2.656,
+        "delta": 0.0013
       },
       "L0H4": {
         "pretrained": 2.5053,
-        "finetuned": 2.4507,
-        "delta": -0.0546
+        "finetuned": 2.5096,
+        "delta": 0.0043
       },
       "L0H5": {
         "pretrained": 2.8533,
-        "finetuned": 2.8335,
-        "delta": -0.0198
+        "finetuned": 2.8419,
+        "delta": -0.0114
       },
       "L0H6": {
         "pretrained": 2.1031,
-        "finetuned": 1.9831,
-        "delta": -0.12
+        "finetuned": 2.0894,
+        "delta": -0.0137
       },
       "L0H7": {
         "pretrained": 2.3223,
-        "finetuned": 2.2028,
-        "delta": -0.1195
+        "finetuned": 2.3377,
+        "delta": 0.0154
       },
       "L1H0": {
         "pretrained": 2.6708,
-        "finetuned": 2.5144,
-        "delta": -0.1564
+        "finetuned": 2.5887,
+        "delta": -0.0821
       },
       "L1H1": {
         "pretrained": 2.7866,
-        "finetuned": 2.7366,
-        "delta": -0.05
+        "finetuned": 2.7299,
+        "delta": -0.0567
       },
       "L1H2": {
         "pretrained": 0.8595,
-        "finetuned": 0.5532,
-        "delta": -0.3063
+        "finetuned": 0.9602,
+        "delta": 0.1007
       },
       "L1H3": {
         "pretrained": 1.8814,
-        "finetuned": 1.8214,
-        "delta": -0.06
+        "finetuned": 2.1663,
+        "delta": 0.2849
       },
       "L1H4": {
         "pretrained": 2.0291,
-        "finetuned": 1.79,
-        "delta": -0.2391
+        "finetuned": 1.9061,
+        "delta": -0.123
       },
       "L1H5": {
         "pretrained": 2.6488,
-        "finetuned": 2.6327,
-        "delta": -0.0161
+        "finetuned": 2.6181,
+        "delta": -0.0307
       },
       "L1H6": {
         "pretrained": 2.0992,
-        "finetuned": 1.9213,
-        "delta": -0.1779
+        "finetuned": 1.9904,
+        "delta": -0.1088
       },
       "L1H7": {
         "pretrained": 1.3981,
-        "finetuned": 1.1641,
-        "delta": -0.234
+        "finetuned": 1.6544,
+        "delta": 0.2563
       },
       "L2H0": {
         "pretrained": 2.3555,
-        "finetuned": 2.2238,
-        "delta": -0.1317
+        "finetuned": 2.1994,
+        "delta": -0.1561
       },
       "L2H1": {
         "pretrained": 1.8157,
-        "finetuned": 1.6344,
-        "delta": -0.1813
+        "finetuned": 1.6236,
+        "delta": -0.1921
       },
       "L2H2": {
         "pretrained": 1.9353,
-        "finetuned": 1.8128,
-        "delta": -0.1225
+        "finetuned": 1.7541,
+        "delta": -0.1812
       },
       "L2H3": {
         "pretrained": 0.721,
-        "finetuned": 0.7554,
-        "delta": 0.0344
+        "finetuned": 0.6678,
+        "delta": -0.0532
       },
       "L2H4": {
         "pretrained": 2.1007,
-        "finetuned": 2.117,
-        "delta": 0.0163
+        "finetuned": 2.0539,
+        "delta": -0.0468
       },
       "L2H5": {
         "pretrained": 1.668,
-        "finetuned": 1.7048,
-        "delta": 0.0368
+        "finetuned": 1.5956,
+        "delta": -0.0724
       },
       "L2H6": {
         "pretrained": 1.7692,
-        "finetuned": 1.4874,
-        "delta": -0.2818
+        "finetuned": 1.4725,
+        "delta": -0.2967
       },
       "L2H7": {
         "pretrained": 0.844,
-        "finetuned": 0.934,
-        "delta": 0.09
+        "finetuned": 0.8129,
+        "delta": -0.0311
       },
       "L3H0": {
         "pretrained": 1.0829,
-        "finetuned": 1.1897,
-        "delta": 0.1068
+        "finetuned": 1.0972,
+        "delta": 0.0143
       },
       "L3H1": {
         "pretrained": 2.3588,
-        "finetuned": 2.2933,
-        "delta": -0.0655
+        "finetuned": 2.0812,
+        "delta": -0.2776
       },
       "L3H2": {
         "pretrained": 1.875,
-        "finetuned": 1.5307,
-        "delta": -0.3443
+        "finetuned": 1.5044,
+        "delta": -0.3706
       },
       "L3H3": {
         "pretrained": 1.5814,
-        "finetuned": 1.5059,
-        "delta": -0.0755
+        "finetuned": 1.5614,
+        "delta": -0.02
       },
       "L3H4": {
         "pretrained": 1.8043,
-        "finetuned": 1.5314,
-        "delta": -0.2729
+        "finetuned": 1.9476,
+        "delta": 0.1433
       },
       "L3H5": {
         "pretrained": 1.8206,
-        "finetuned": 1.7682,
-        "delta": -0.0524
+        "finetuned": 1.7035,
+        "delta": -0.1171
       },
       "L3H6": {
         "pretrained": 1.1041,
-        "finetuned": 1.0931,
-        "delta": -0.011
+        "finetuned": 1.0966,
+        "delta": -0.0075
       },
       "L3H7": {
         "pretrained": 0.0074,
-        "finetuned": 0.0186,
-        "delta": 0.0112
+        "finetuned": 0.0136,
+        "delta": 0.0062
       },
       "L4H0": {
         "pretrained": 1.2885,
-        "finetuned": 1.2471,
-        "delta": -0.0414
+        "finetuned": 1.2756,
+        "delta": -0.0129
       },
       "L4H1": {
         "pretrained": 1.8221,
-        "finetuned": 1.7893,
-        "delta": -0.0328
+        "finetuned": 1.793,
+        "delta": -0.0291
       },
       "L4H2": {
         "pretrained": 0.8433,
-        "finetuned": 0.8533,
-        "delta": 0.01
+        "finetuned": 0.829,
+        "delta": -0.0143
       },
       "L4H3": {
         "pretrained": 0.9914,
-        "finetuned": 1.0974,
-        "delta": 0.106
+        "finetuned": 0.9788,
+        "delta": -0.0126
       },
       "L4H4": {
         "pretrained": 1.5967,
-        "finetuned": 1.6084,
-        "delta": 0.0117
+        "finetuned": 1.4589,
+        "delta": -0.1378
       },
       "L4H5": {
         "pretrained": 1.7885,
-        "finetuned": 1.7718,
-        "delta": -0.0167
+        "finetuned": 1.6667,
+        "delta": -0.1218
       },
       "L4H6": {
         "pretrained": 1.7969,
-        "finetuned": 1.9189,
-        "delta": 0.122
+        "finetuned": 1.711,
+        "delta": -0.0859
       },
       "L4H7": {
         "pretrained": 0.4766,
-        "finetuned": 0.5409,
-        "delta": 0.0643
+        "finetuned": 0.4529,
+        "delta": -0.0237
       },
       "L5H0": {
         "pretrained": 0.938,
-        "finetuned": 0.9056,
-        "delta": -0.0324
+        "finetuned": 1.3213,
+        "delta": 0.3833
       },
       "L5H1": {
         "pretrained": 1.1822,
-        "finetuned": 1.0069,
-        "delta": -0.1753
+        "finetuned": 1.3429,
+        "delta": 0.1607
       },
       "L5H2": {
         "pretrained": 1.2502,
-        "finetuned": 1.0588,
-        "delta": -0.1914
+        "finetuned": 1.4213,
+        "delta": 0.1711
       },
       "L5H3": {
         "pretrained": 1.9971,
-        "finetuned": 1.9502,
-        "delta": -0.0469
+        "finetuned": 2.1164,
+        "delta": 0.1193
       },
       "L5H4": {
         "pretrained": 1.3439,
-        "finetuned": 1.1337,
-        "delta": -0.2102
+        "finetuned": 1.5079,
+        "delta": 0.164
       },
       "L5H5": {
         "pretrained": 1.7142,
-        "finetuned": 1.6177,
-        "delta": -0.0965
+        "finetuned": 1.7833,
+        "delta": 0.0691
       },
       "L5H6": {
         "pretrained": 2.0519,
-        "finetuned": 1.9359,
-        "delta": -0.116
+        "finetuned": 2.1516,
+        "delta": 0.0997
       },
       "L5H7": {
         "pretrained": 1.4605,
-        "finetuned": 1.2411,
-        "delta": -0.2194
+        "finetuned": 1.5978,
+        "delta": 0.1373
       }
     },
     "per_layer": {
       "layer_0": {
         "pretrained_mean": 2.5212,
-        "finetuned_mean": 2.4304,
-        "delta": -0.0908
+        "finetuned_mean": 2.5187,
+        "delta": -0.0025
       },
       "layer_1": {
         "pretrained_mean": 2.0467,
-        "finetuned_mean": 1.8917,
-        "delta": -0.155
+        "finetuned_mean": 2.0768,
+        "delta": 0.0301
       },
       "layer_2": {
         "pretrained_mean": 1.6512,
-        "finetuned_mean": 1.5837,
-        "delta": -0.0675
+        "finetuned_mean": 1.5225,
+        "delta": -0.1287
       },
       "layer_3": {
         "pretrained_mean": 1.4543,
-        "finetuned_mean": 1.3664,
-        "delta": -0.0879
+        "finetuned_mean": 1.3757,
+        "delta": -0.0786
       },
       "layer_4": {
         "pretrained_mean": 1.3255,
-        "finetuned_mean": 1.3534,
-        "delta": 0.0279
+        "finetuned_mean": 1.2707,
+        "delta": -0.0548
       },
       "layer_5": {
         "pretrained_mean": 1.4922,
-        "finetuned_mean": 1.3562,
-        "delta": -0.136
+        "finetuned_mean": 1.6553,
+        "delta": 0.1631
       }
     },
-    "mean_delta": -0.0849,
+    "mean_delta": -0.0119,
     "largest_decrease": [
       [
         "L3H2",
         {
           "pretrained": 1.875,
-          "finetuned": 1.5307,
-          "delta": -0.3443
-        }
-      ],
-      [
-        "L1H2",
-        {
-          "pretrained": 0.8595,
-          "finetuned": 0.5532,
-          "delta": -0.3063
+          "finetuned": 1.5044,
+          "delta": -0.3706
         }
       ],
       [
         "L2H6",
         {
           "pretrained": 1.7692,
-          "finetuned": 1.4874,
-          "delta": -0.2818
+          "finetuned": 1.4725,
+          "delta": -0.2967
+        }
+      ],
+      [
+        "L3H1",
+        {
+          "pretrained": 2.3588,
+          "finetuned": 2.0812,
+          "delta": -0.2776
         }
       ]
     ],
     "largest_increase": [
       [
-        "L4H6",
+        "L5H0",
         {
-          "pretrained": 1.7969,
-          "finetuned": 1.9189,
-          "delta": 0.122
+          "pretrained": 0.938,
+          "finetuned": 1.3213,
+          "delta": 0.3833
         }
       ],
       [
-        "L3H0",
+        "L1H3",
         {
-          "pretrained": 1.0829,
-          "finetuned": 1.1897,
-          "delta": 0.1068
+          "pretrained": 1.8814,
+          "finetuned": 2.1663,
+          "delta": 0.2849
         }
       ],
       [
-        "L4H3",
+        "L1H7",
         {
-          "pretrained": 0.9914,
-          "finetuned": 1.0974,
-          "delta": 0.106
+          "pretrained": 1.3981,
+          "finetuned": 1.6544,
+          "delta": 0.2563
         }
       ]
     ]
