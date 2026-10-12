@@ -25,6 +25,9 @@ logs/
 
 # Everything under report/ should stay tracked.
 !report/**
+report/*.aux
+report/*.log
+report/*.out
 
 # Python
 __pycache__/
@@ -52,3 +55,6 @@ Thumbs.db
 # Private working notes
 .hidden/
 docs
+
+# Local helper scripts
+scripts/
